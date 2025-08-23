@@ -5,13 +5,19 @@
   <link rel="stylesheet" href="/style.css">
   <title>Kitis's Notebook</title>
 
-  
   <script type="module">
     // Import Firebase
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+    import { 
+      getFirestore, 
+      collection, 
+      addDoc, 
+      onSnapshot, 
+      deleteDoc, 
+      doc 
+    } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
-    // 🔑 Your Firebase config (keep this as-is)
+    // 🔑 Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyBXhiyGWev_pgR04Xqwq-09cE_oyrLWnU8",
       authDomain: "kitisnotebook.firebaseapp.com",
@@ -37,6 +43,11 @@
       }
     }
 
+    // 📌 Delete a note by ID
+    async function deleteNote(id) {
+      await deleteDoc(doc(db, "notes", id));
+    }
+
     // 📌 Display notes in real-time
     function setupRealtimeNotes() {
       const appent = document.getElementById("notesList");
@@ -48,11 +59,22 @@
 
         snapshot.forEach((docSnap) => {
           const data = docSnap.data();
-          console.log("Doc:", docSnap.id, data);
+
+          // create note wrapper
+          const div = document.createElement("div");
+          div.className = "note-item";
 
           const p = document.createElement("p");
           p.textContent = data.text || "(empty)";
-          appent.appendChild(p);
+
+          // create delete button
+          const delBtn = document.createElement("button");
+          delBtn.textContent = "Delete";
+          delBtn.onclick = () => deleteNote(docSnap.id);
+
+          div.appendChild(p);
+          div.appendChild(delBtn);
+          appent.appendChild(div);
         });
       });
     }
@@ -74,4 +96,3 @@
 </body>
   <script src="/script.js"></script>
 </html>
-
