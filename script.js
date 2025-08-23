@@ -7,7 +7,7 @@ function takeUserText() {
 }
 
 function addNew() {
-  const userName = document.getElementById("username").value.trim();
+  const userName = document.getElementById("username").value;
   const text = takeUserText();
 
   // Don’t save empty notes or if no username
@@ -59,3 +59,4 @@ function loadItems() {
 }
 
 window.addEventListener("load", loadItems);
+
