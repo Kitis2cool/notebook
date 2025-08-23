@@ -1,6 +1,3 @@
-
-
-
 if (localStorage.getItem("itemListNumber") === null) {
   localStorage.setItem("itemListNumber", "0");
 }
@@ -10,25 +7,25 @@ function takeUserText() {
 }
 
 function addNew() {
-  var userName = document.getElementById("username").value;
-  var userText = takeUserText();
-  var userText =  userName + ": " + userText
-  if (!userText) return; // don’t save empty notes
+  const userName = document.getElementById("username").value.trim();
+  const text = takeUserText();
+  if (!userName || !text) return; // don’t save empty input
 
+  const userText = `${userName}: ${text}`;
   const inputField = document.getElementById("userText");
-  const appent = document.getElementById("123");
+  const append = document.getElementById("123");
 
   let ILN = parseInt(localStorage.getItem("itemListNumber"), 10);
 
-  // Save new item
+  // Save
   localStorage.setItem(`note_${ILN}`, userText);
 
-  // Append to DOM
+  // Display
   const element = document.createElement("p");
   element.textContent = userText;
-  appent.appendChild(element);
+  append.appendChild(element);
 
-  // Increment counter
+  // Increment
   localStorage.setItem("itemListNumber", (ILN + 1).toString());
 
   inputField.value = "";
@@ -36,15 +33,17 @@ function addNew() {
 }
 
 function clearStorage() {
-  localStorage.clear();
+  let ILN = parseInt(localStorage.getItem("itemListNumber"), 10);
+  for (let i = 0; i < ILN; i++) {
+    localStorage.removeItem(`note_${i}`);
+  }
   localStorage.setItem("itemListNumber", "0");
   document.getElementById("123").innerHTML = "";
-  console.log("Cleared localStorage");
+  console.log("Cleared notes");
 }
 
-// Load items on page load
 function loadItems() {
-  const appent = document.getElementById("123");
+  const append = document.getElementById("123");
   let ILN = parseInt(localStorage.getItem("itemListNumber"), 10);
 
   for (let i = 0; i < ILN; i++) {
@@ -52,15 +51,9 @@ function loadItems() {
     if (item) {
       const element = document.createElement("p");
       element.textContent = item;
-      appent.appendChild(element);
+      append.appendChild(element);
     }
   }
 }
 
 window.addEventListener("load", loadItems);
-
-
-
-
-
-
