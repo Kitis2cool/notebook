@@ -71,6 +71,7 @@
           const delBtn = document.createElement("button");
           delBtn.textContent = "Delete";
           delBtn.onclick = () => deleteNote(docSnap.id);
+          delBtn.className = "delBtn";
 
           div.appendChild(p);
           div.appendChild(delBtn);
@@ -96,3 +97,4 @@
 </body>
   <script src="/script.js"></script>
 </html>
+
