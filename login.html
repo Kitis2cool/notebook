@@ -2,17 +2,17 @@
 <html>
 <head>
     <style>
-        body{
+        body {
             background-color: rgba(122, 122, 122, 0.534);
         }
-        input{
+        input {
             width: 200px;
             height: 18px;
             border: none;
             border-radius: 8px;
             font-size: medium;
         }
-        button{
+        button {
             height: 20px;
             width: 60px;
             border: none;
@@ -26,14 +26,13 @@
 <body>
     <h1>Login page</h1>
 
-    <input type="text" placeholder="Username" id="usernameField"><br><br>
-    <input type="password" placeholder="Enter password" id="passwordField"><br><br>
+    <input type="text" id="usernameField" placeholder="Username"><br><br>
+    <input type="password" id="passwordField" placeholder="Password"><br><br>
 
     <button onclick="login()">Login</button>
     <button onclick="createAccount()">Sign Up</button>
 
     <script>
-        // Create account
         function createAccount() {
             const username = document.getElementById("usernameField").value.trim();
             const password = document.getElementById("passwordField").value;
@@ -43,42 +42,34 @@
                 return;
             }
 
-            // Check if user already exists
             if (localStorage.getItem(`user_${username}`)) {
                 alert("Username already exists. Choose another.");
                 return;
             }
 
-            // Save user in localStorage
             localStorage.setItem(`user_${username}`, password);
             alert("Account created! You can now login.");
             document.getElementById("usernameField").value = "";
             document.getElementById("passwordField").value = "";
         }
 
-        // Login
         function login() {
             const username = document.getElementById("usernameField").value.trim();
             const password = document.getElementById("passwordField").value;
-
             const storedPassword = localStorage.getItem(`user_${username}`);
 
             if (storedPassword && storedPassword === password) {
-                // Save logged-in user
                 localStorage.setItem("loggedInUser", username);
-
-                // Redirect to index.html
                 window.location.href = "index.html";
             } else {
-                alert("Wrong username or password. Try again.");
+                alert("Wrong username or password.");
                 document.getElementById("passwordField").value = "";
             }
         }
 
-        // Auto redirect if already logged in
+        // Redirect if already logged in
         window.onload = () => {
-            const user = localStorage.getItem("loggedInUser");
-            if (user) {
+            if (localStorage.getItem("loggedInUser")) {
                 window.location.href = "index.html";
             }
         }
