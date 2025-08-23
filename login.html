@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<head>
+
+    <style>
+        body{
+            background-color: rgba(122, 122, 122, 0.534);
+        }
+        input{
+            width: 200px;
+            height: 18px;
+            border: none;
+            border-radius: 8px;
+            font-size: medium;
+        }
+        button{
+            height: 20px;
+            width: 60px;
+            border: none;
+            border-radius: 8px;
+            background-color: rgb(84, 245, 145);
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Login page</h1>
+    <input type="password" placeholder="Enter password" id="loginField">
+    <button onclick="checkLogin()">Login</button>
+    <script>
+        
+        function checkLogin(){
+            var passwordField = document.getElementById("loginField").value;
+            if (passwordField == "kitis"){
+                window.open("\index.html", "_self")
+            } else{
+                document.getElementById("loginField").value = "";
+                alert("Wrong password, Please try again.")
+            }
+        }
+
+    </script>
+</body>
