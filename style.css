@@ -10,6 +10,14 @@
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
 }
 
+.delBtn{
+    background-color: rgb(12, 212, 121);
+    border-radius: 8px;
+    border: none;
+    font-weight: none;
+    cursor: pointer;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+}
 
 button:active {
     transform: translateY(1px);
@@ -40,3 +48,4 @@ textarea:focus {
     transform: translateY(-15px);
 
 }
+
