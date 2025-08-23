@@ -4,20 +4,25 @@
   <meta charset="UTF-8">
   <link rel="stylesheet" href="/style.css">
   <title>Kitis's Chatroom</title>
-  <input id="username" placeholder="Enter username">
+</head>
+<body>
+  <h1>Kitis's Notebook</h1>
+
+  <!-- Username input -->
+  <input id="username" placeholder="Enter username"><br><br>
+
+  <textarea id="noteInput" placeholder="Write a note..."></textarea><br>
+  <button id="saveBtn">Send Message</button>
+
+  <h2>Messages:</h2>
+  <div id="notesList"></div>
+
   <script type="module">
     // Import Firebase
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import { 
-      getFirestore, 
-      collection, 
-      addDoc, 
-      onSnapshot, 
-      deleteDoc, 
-      doc 
-    } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
-    // 🔑 Firebase config
+    // Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyBXhiyGWev_pgR04Xqwq-09cE_oyrLWnU8",
       authDomain: "kitisnotebook.firebaseapp.com",
@@ -32,18 +37,22 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // 📌 Save a new note
+    // Save a new note
     async function saveNote() {
-      const input = document.getElementById("noteInput");
-      const noteText = input.value.trim();
+      const usernameInput = document.getElementById("username").value.trim();
+      const noteInput = document.getElementById("noteInput").value.trim();
 
-      if (noteText) {
-        await addDoc(collection(db, "notes"), { text: noteText });
-        input.value = ""; // clear box
-      }
+      // Require both username and note
+      if (!usernameInput || !noteInput) return alert("Please enter a username and a message.");
+
+      // Combine username + note
+      const fullNote = `${usernameInput}: ${noteInput}`;
+
+      await addDoc(collection(db, "notes"), { text: fullNote });
+      document.getElementById("noteInput").value = ""; // clear note box
     }
 
-    // 📌 Delete a note by ID (with confirm dialog)
+    // Delete a note by ID
     async function deleteNote(id) {
       const confirmDelete = confirm("Are you sure you want to delete this note?");
       if (confirmDelete) {
@@ -51,26 +60,22 @@
       }
     }
 
-    // 📌 Display notes in real-time
+    // Display notes in real-time
     function setupRealtimeNotes() {
-      const appent = document.getElementById("notesList");
+      const notesList = document.getElementById("notesList");
 
-      // listen to "notes" collection live
       onSnapshot(collection(db, "notes"), (snapshot) => {
-        console.log("Docs found:", snapshot.size);
-        appent.innerHTML = ""; // clear before re-rendering
+        notesList.innerHTML = ""; // clear before re-rendering
 
         snapshot.forEach((docSnap) => {
           const data = docSnap.data();
 
-          // create note wrapper
           const div = document.createElement("div");
           div.className = "note-item";
 
           const p = document.createElement("p");
           p.textContent = data.text || "(empty)";
 
-          // create delete button
           const delBtn = document.createElement("button");
           delBtn.textContent = "Delete";
           delBtn.onclick = () => deleteNote(docSnap.id);
@@ -78,27 +83,16 @@
 
           div.appendChild(p);
           div.appendChild(delBtn);
-          appent.appendChild(div);
+          notesList.appendChild(div);
         });
       });
     }
 
-    // Run when page loads
+    // Run on page load
     window.onload = () => {
       document.getElementById("saveBtn").onclick = saveNote;
       setupRealtimeNotes();
     };
   </script>
-</head>
-<body>
-  <h1>Kitis's Notebook</h1>
-  <textarea id="noteInput" placeholder="Write a note..."></textarea><br>
-  <button id="saveBtn">Send Message</button>
-
-  <h2>Messages:</h2>
-  <div id="notesList"></div>
 </body>
-  <script src="/script.js"></script>
 </html>
-
-
