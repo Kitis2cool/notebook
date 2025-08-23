@@ -8,8 +8,8 @@
 <body>
   <h1>Kitis's Notebook</h1>
 
-  <!-- Username input -->
-  <input id="username" placeholder="Enter username"><br><br>
+  <!-- Username input (readonly) -->
+  <input id="username" readonly><br><br>
 
   <textarea id="noteInput" placeholder="Write a note..."></textarea><br>
   <button id="saveBtn">Send Message</button>
@@ -18,7 +18,6 @@
   <div id="notesList"></div>
 
   <script type="module">
-    // Import Firebase
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
     import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
@@ -33,29 +32,32 @@
       measurementId: "G-W3ZVV6N6KK"
     };
 
-    // Initialize Firebase + Firestore
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
+    // Auto-fill username from login
+    const usernameField = document.getElementById("username");
+    const loggedInUser = localStorage.getItem("loggedInUser");
+    if (!loggedInUser) {
+      alert("Not logged in!");
+      window.location.href = "login.html"; // redirect to login if no user
+    } else {
+      usernameField.value = loggedInUser;
+    }
+
     // Save a new note
     async function saveNote() {
-      const usernameInput = document.getElementById("username").value.trim();
       const noteInput = document.getElementById("noteInput").value.trim();
+      if (!noteInput) return alert("Please enter a message.");
 
-      // Require both username and note
-      if (!usernameInput || !noteInput) return alert("Please enter a username and a message.");
-
-      // Combine username + note
-      const fullNote = `${usernameInput}: ${noteInput}`;
-
+      const fullNote = `${loggedInUser}: ${noteInput}`;
       await addDoc(collection(db, "notes"), { text: fullNote });
       document.getElementById("noteInput").value = ""; // clear note box
     }
 
     // Delete a note by ID
     async function deleteNote(id) {
-      const confirmDelete = confirm("Are you sure you want to delete this note?");
-      if (confirmDelete) {
+      if (confirm("Are you sure you want to delete this note?")) {
         await deleteDoc(doc(db, "notes", id));
       }
     }
@@ -88,7 +90,6 @@
       });
     }
 
-    // Run on page load
     window.onload = () => {
       document.getElementById("saveBtn").onclick = saveNote;
       setupRealtimeNotes();
