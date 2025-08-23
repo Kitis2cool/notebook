@@ -1,99 +1,75 @@
-<!doctype html>
-<html>
-  <head>
-    <title>Kitis's Notebook</title>
-    <link rel="stylesheet" href="/style.css">
-  </head>
-  <body>
-    <h1>Kitis's Notebook</h1>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Kit's Notebook</title>
 
-    <div>
-      <textarea placeholder="Add to list" id="userText"></textarea>
-      <button onclick="addNew()">Add entry</button>
-      <div id="123"></div>
-    </div>
+  
+  <script type="module">
+    // Import Firebase
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
-    <button onclick="clearStorage()">CLEAR ALL</button>
-    <script src="/script.js"></script>
-    <script type="module">
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-      import { 
-        getFirestore, 
-        collection, 
-        addDoc, 
-        getDocs, 
-        deleteDoc, 
-        doc 
-      } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+    // 🔑 Your Firebase config (keep this as-is)
+    const firebaseConfig = {
+      apiKey: "AIzaSyBXhiyGWev_pgR04Xqwq-09cE_oyrLWnU8",
+      authDomain: "kitisnotebook.firebaseapp.com",
+      projectId: "kitisnotebook",
+      storageBucket: "kitisnotebook.firebasestorage.app",
+      messagingSenderId: "450680847245",
+      appId: "1:450680847245:web:2e4ebb71ccd3a7920bdbc4",
+      measurementId: "G-W3ZVV6N6KK"
+    };
 
-      // 🔹 Your Firebase config
-      const firebaseConfig = {
-        apiKey: "AIzaSyBXhiyGWev_pgR04Xqwq-09cE_oyrLWnU8",
-        authDomain: "kitisnotebook.firebaseapp.com",
-        projectId: "kitisnotebook",
-        storageBucket: "kitisnotebook.appspot.com",   // ⚠️ changed to .appspot.com
-        messagingSenderId: "450680847245",
-        appId: "1:450680847245:web:2e4ebb71ccd3a7920bdbc4",
-        measurementId: "G-W3ZVV6N6KK"
-      };
+    // Initialize Firebase + Firestore
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
 
-      const app = initializeApp(firebaseConfig);
-      const db = getFirestore(app);
+    // 📌 Save a new note
+    async function saveNote() {
+      const input = document.getElementById("noteInput");
+      const noteText = input.value.trim();
 
-      // Add new note
-      async function addNew() {
-        const userText = document.getElementById("userText").value.trim();
-        if (!userText) return;
-
-        await addDoc(collection(db, "notes"), { text: userText, created: Date.now() });
-
-        document.getElementById("userText").value = "";
-        displayNotes();
+      if (noteText) {
+        await addDoc(collection(db, "notes"), { text: noteText });
+        input.value = ""; // clear box
       }
+    }
 
-      // Show all notes
-      async function displayNotes() {
-        const appent = document.getElementById("123");
-        appent.innerHTML = "";
+    // 📌 Display notes in real-time
+    function setupRealtimeNotes() {
+      const appent = document.getElementById("notesList");
 
-        const querySnapshot = await getDocs(collection(db, "notes"));
-        querySnapshot.forEach((docSnap) => {
-          const note = docSnap.data().text;
+      // listen to "notes" collection live
+      onSnapshot(collection(db, "notes"), (snapshot) => {
+        console.log("Docs found:", snapshot.size);
+        appent.innerHTML = ""; // clear before re-rendering
 
-          const wrapper = document.createElement("div");
-          wrapper.style.display = "flex";
-          wrapper.style.gap = "10px";
-          wrapper.style.alignItems = "center";
+        snapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          console.log("Doc:", docSnap.id, data);
 
-          const element = document.createElement("p");
-          element.textContent = note;
-
-          const delBtn = document.createElement("button");
-          delBtn.textContent = "❌";
-          delBtn.onclick = async () => {
-            await deleteDoc(doc(db, "notes", docSnap.id));
-            displayNotes();
-          };
-
-          wrapper.appendChild(element);
-          wrapper.appendChild(delBtn);
-          appent.appendChild(wrapper);
+          const p = document.createElement("p");
+          p.textContent = data.text || "(empty)";
+          appent.appendChild(p);
         });
-      }
+      });
+    }
 
-      // Clear all notes
-      async function clearNotes() {
-        const querySnapshot = await getDocs(collection(db, "notes"));
-        for (const docSnap of querySnapshot.docs) {
-          await deleteDoc(doc(db, "notes", docSnap.id));
-        }
-        displayNotes();
-      }
+    // Run when page loads
+    window.onload = () => {
+      document.getElementById("saveBtn").onclick = saveNote;
+      setupRealtimeNotes();
+    };
+  </script>
+</head>
+<body>
+  <h1>Kitis's Notebook</h1>
+  <textarea id="noteInput" placeholder="Write a note..."></textarea><br>
+  <button id="saveBtn">Save Note</button>
 
-      // Load on page start
-      window.addEventListener("load", displayNotes);
-    </script>
-  </body>
+  <h2>Saved Notes:</h2>
+  <div id="notesList"></div>
+</body>
+  <script src="/script.js"></script>
 </html>
-
-
