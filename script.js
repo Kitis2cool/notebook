@@ -9,7 +9,9 @@ function takeUserText() {
 function addNew() {
   const userName = document.getElementById("username").value.trim();
   const text = takeUserText();
-  if (!userName || !text) return; // don’t save empty input
+
+  // Don’t save empty notes or if no username
+  if (!userName || !text) return;
 
   const userText = `${userName}: ${text}`;
   const inputField = document.getElementById("userText");
@@ -17,15 +19,15 @@ function addNew() {
 
   let ILN = parseInt(localStorage.getItem("itemListNumber"), 10);
 
-  // Save
+  // Save new item
   localStorage.setItem(`note_${ILN}`, userText);
 
-  // Display
+  // Append to DOM
   const element = document.createElement("p");
   element.textContent = userText;
   append.appendChild(element);
 
-  // Increment
+  // Increment counter
   localStorage.setItem("itemListNumber", (ILN + 1).toString());
 
   inputField.value = "";
