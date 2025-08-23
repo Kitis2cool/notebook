@@ -11,7 +11,7 @@
 }
 
 .delBtn{
-    background-color: rgb(12, 212, 121);
+    background-color: #F94124;
     border-radius: 8px;
     border: none;
     font-weight: none;
@@ -48,4 +48,5 @@ textarea:focus {
     transform: translateY(-15px);
 
 }
+
 
