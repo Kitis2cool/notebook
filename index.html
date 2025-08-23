@@ -9,7 +9,8 @@
   <h1>Kitis's Notebook</h1>
 
   <!-- Username input (readonly) -->
-  <input id="username" readonly><br><br>
+  <input id="username" readonly>
+  <button id="logoutBtn">Logout</button><br><br>
 
   <textarea id="noteInput" placeholder="Write a note..."></textarea><br>
   <button id="saveBtn">Send Message</button>
@@ -40,10 +41,16 @@
     const loggedInUser = localStorage.getItem("loggedInUser");
     if (!loggedInUser) {
       alert("Not logged in!");
-      window.location.href = "login.html"; // redirect to login if no user
+      window.location.href = "login.html";
     } else {
       usernameField.value = loggedInUser;
     }
+
+    // Logout function
+    document.getElementById("logoutBtn").onclick = () => {
+      localStorage.removeItem("loggedInUser"); // clear logged in user
+      window.location.href = "login.html"; // redirect to login
+    };
 
     // Save a new note
     async function saveNote() {
@@ -52,7 +59,7 @@
 
       const fullNote = `${loggedInUser}: ${noteInput}`;
       await addDoc(collection(db, "notes"), { text: fullNote });
-      document.getElementById("noteInput").value = ""; // clear note box
+      document.getElementById("noteInput").value = "";
     }
 
     // Delete a note by ID
@@ -67,11 +74,10 @@
       const notesList = document.getElementById("notesList");
 
       onSnapshot(collection(db, "notes"), (snapshot) => {
-        notesList.innerHTML = ""; // clear before re-rendering
+        notesList.innerHTML = "";
 
         snapshot.forEach((docSnap) => {
           const data = docSnap.data();
-
           const div = document.createElement("div");
           div.className = "note-item";
 
@@ -81,10 +87,9 @@
           const delBtn = document.createElement("button");
           delBtn.textContent = "Delete";
           delBtn.onclick = () => deleteNote(docSnap.id);
-          delBtn.className = "delBtn";
-
           div.appendChild(p);
           div.appendChild(delBtn);
+
           notesList.appendChild(div);
         });
       });
