@@ -1,0 +1,93 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Kitis's Notebook</title>
+    <link rel="stylesheet" href="/style.css">
+  </head>
+  <body>
+    <h1>Kitis's Notes:</h1>
+
+    <div>
+      <textarea placeholder="Add to list" id="userText"></textarea>
+      <button onclick="addNew()">Add entry</button>
+      <div id="123"></div>
+    </div>
+
+    <button onclick="clearNotes()">CLEAR ALL</button>
+    <script src="/script.js"></script>
+ <!-- Firebase + App Script -->
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+      import { 
+        getFirestore, 
+        collection, 
+        addDoc, 
+        getDocs, 
+        deleteDoc, 
+        doc 
+      } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+      // 🔹 Firebase config for kitisnotebook
+      const firebaseConfig = {
+        apiKey: "AIzaSyBXhiyGWev_pgR04Xqwq-09cE_oyrLWnU8",
+        authDomain: "kitisnotebook.firebaseapp.com",
+        projectId: "kitisnotebook",
+        storageBucket: "kitisnotebook.firebasestorage.app",
+        messagingSenderId: "450680847245",
+        appId: "1:450680847245:web:2e4ebb71ccd3a7920bdbc4",
+        measurementId: "G-W3ZVV6N6KK"
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
+
+      async function addNew() {
+        const userText = document.getElementById("userText").value.trim();
+        if (!userText) return;
+
+        await addDoc(collection(db, "notes"), { text: userText });
+        document.getElementById("userText").value = "";
+        displayNotes();
+      }
+
+      async function displayNotes() {
+        const appent = document.getElementById("123");
+        appent.innerHTML = "";
+
+        const querySnapshot = await getDocs(collection(db, "notes"));
+        querySnapshot.forEach((docSnap) => {
+          const note = docSnap.data().text;
+
+          const wrapper = document.createElement("div");
+          wrapper.style.display = "flex";
+          wrapper.style.gap = "10px";
+          wrapper.style.alignItems = "center";
+
+          const element = document.createElement("p");
+          element.textContent = note;
+
+          const delBtn = document.createElement("button");
+          delBtn.textContent = "❌";
+          delBtn.onclick = async () => {
+            await deleteDoc(doc(db, "notes", docSnap.id));
+            displayNotes();
+          };
+
+          wrapper.appendChild(element);
+          wrapper.appendChild(delBtn);
+          appent.appendChild(wrapper);
+        });
+      }
+
+      async function clearNotes() {
+        const querySnapshot = await getDocs(collection(db, "notes"));
+        for (const docSnap of querySnapshot.docs) {
+          await deleteDoc(doc(db, "notes", docSnap.id));
+        }
+        displayNotes();
+      }
+
+      window.addEventListener("load", displayNotes);
+    </script>
+  </body>
+</html>
