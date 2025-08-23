@@ -43,9 +43,12 @@
       }
     }
 
-    // 📌 Delete a note by ID
+    // 📌 Delete a note by ID (with confirm dialog)
     async function deleteNote(id) {
-      await deleteDoc(doc(db, "notes", id));
+      const confirmDelete = confirm("Are you sure you want to delete this note?");
+      if (confirmDelete) {
+        await deleteDoc(doc(db, "notes", id));
+      }
     }
 
     // 📌 Display notes in real-time
@@ -97,4 +100,3 @@
 </body>
   <script src="/script.js"></script>
 </html>
-
