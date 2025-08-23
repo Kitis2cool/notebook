@@ -1,62 +1,112 @@
-if (localStorage.getItem("itemListNumber") === null) {
-  localStorage.setItem("itemListNumber", "0");
-}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="/style.css">
+  <title>Kitis's Chatroom</title>
+</head>
+<body>
+  <h1>Kitis's Notebook</h1>
 
-function takeUserText() {
-  return document.getElementById("userText").value.trim();
-}
+  <!-- Username input (readonly) -->
+  <input id="username" readonly>
+  <button id="logoutBtn">Logout</button><br><br>
 
-function addNew() {
-  const userName = document.getElementById("username").value;
-  const text = takeUserText();
+  <textarea id="noteInput" placeholder="Write a note..."></textarea><br>
+  <button id="saveBtn">Send Message</button>
 
-  // Don’t save empty notes or if no username
-  if (!userName || !text) return;
+  <h2>Messages:</h2>
+  <div id="notesList"></div>
 
-  const userText = `${userName}: ${text}`;
-  const inputField = document.getElementById("userText");
-  const append = document.getElementById("123");
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
-  let ILN = parseInt(localStorage.getItem("itemListNumber"), 10);
+    // Firebase config
+    const firebaseConfig = {
+      apiKey: "AIzaSyBXhiyGWev_pgR04Xqwq-09cE_oyrLWnU8",
+      authDomain: "kitisnotebook.firebaseapp.com",
+      projectId: "kitisnotebook",
+      storageBucket: "kitisnotebook.firebasestorage.app",
+      messagingSenderId: "450680847245",
+      appId: "1:450680847245:web:2e4ebb71ccd3a7920bdbc4",
+      measurementId: "G-W3ZVV6N6KK"
+    };
 
-  // Save new item
-  localStorage.setItem(`note_${ILN}`, userText);
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
 
-  // Append to DOM
-  const element = document.createElement("p");
-  element.textContent = userText;
-  append.appendChild(element);
-
-  // Increment counter
-  localStorage.setItem("itemListNumber", (ILN + 1).toString());
-
-  inputField.value = "";
-  console.log(`Saved: ${userText}, New ILN: ${ILN + 1}`);
-}
-
-function clearStorage() {
-  let ILN = parseInt(localStorage.getItem("itemListNumber"), 10);
-  for (let i = 0; i < ILN; i++) {
-    localStorage.removeItem(`note_${i}`);
-  }
-  localStorage.setItem("itemListNumber", "0");
-  document.getElementById("123").innerHTML = "";
-  console.log("Cleared notes");
-}
-
-function loadItems() {
-  const append = document.getElementById("123");
-  let ILN = parseInt(localStorage.getItem("itemListNumber"), 10);
-
-  for (let i = 0; i < ILN; i++) {
-    const item = localStorage.getItem(`note_${i}`);
-    if (item) {
-      const element = document.createElement("p");
-      element.textContent = item;
-      append.appendChild(element);
+    // Auto-fill username from login
+    const usernameField = document.getElementById("username");
+    const loggedInUser = localStorage.getItem("loggedInUser");
+    if (!loggedInUser) {
+      alert("Not logged in!");
+      window.location.href = "login.html";
+    } else {
+      usernameField.value = loggedInUser;
     }
-  }
-}
 
-window.addEventListener("load", loadItems);
+    // Logout function
+    document.getElementById("logoutBtn").onclick = () => {
+      localStorage.removeItem("loggedInUser");
+      window.location.href = "login.html";
+    };
 
+    // Save a new note
+    async function saveNote() {
+      const noteInput = document.getElementById("noteInput").value.trim();
+      if (!noteInput) return alert("Please enter a message.");
+
+      // Store text and username separately
+      await addDoc(collection(db, "notes"), { 
+        text: noteInput, 
+        username: loggedInUser 
+      });
+
+      document.getElementById("noteInput").value = "";
+    }
+
+    // Delete a note by ID
+    async function deleteNote(id) {
+      if (confirm("Are you sure you want to delete this note?")) {
+        await deleteDoc(doc(db, "notes", id));
+      }
+    }
+
+    // Display notes in real-time
+    function setupRealtimeNotes() {
+      const notesList = document.getElementById("notesList");
+
+      onSnapshot(collection(db, "notes"), (snapshot) => {
+        notesList.innerHTML = "";
+
+        snapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          const div = document.createElement("div");
+          div.className = "note-item";
+
+          const p = document.createElement("p");
+          p.textContent = `${data.username}: ${data.text || "(empty)"}`;
+          div.appendChild(p);
+
+          // Show delete button only if the message belongs to the logged-in user
+          if (data.username === loggedInUser) {
+            const delBtn = document.createElement("button");
+            delBtn.textContent = "Delete";
+            delBtn.onclick = () => deleteNote(docSnap.id);
+            delBtn.className = "delBtn";
+            div.appendChild(delBtn);
+          }
+
+          notesList.appendChild(div);
+        });
+      });
+    }
+
+    window.onload = () => {
+      document.getElementById("saveBtn").onclick = saveNote;
+      setupRealtimeNotes();
+    };
+  </script>
+</body>
+</html>
