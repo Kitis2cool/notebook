@@ -10,9 +10,9 @@ function takeUserText() {
 }
 
 function addNew() {
-  var username = document.getElementById("username").value;
+  var userName = document.getElementById("username").value;
   var userText = takeUserText();
-  var userText =  username + ": " + userText
+  var userText =  userName + ": " + userText
   if (!userText) return; // don’t save empty notes
 
   const inputField = document.getElementById("userText");
@@ -58,6 +58,7 @@ function loadItems() {
 }
 
 window.addEventListener("load", loadItems);
+
 
 
 
