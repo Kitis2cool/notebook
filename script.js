@@ -1,24 +1,4 @@
 
-async function displayNotes() {
-  console.log("Loading notes from Firestore...");
-  const appent = document.getElementById("123");
-  appent.innerHTML = "";
-
-  const querySnapshot = await getDocs(collection(db, "notes"));
-  console.log("Docs found:", querySnapshot.size);
-
-  querySnapshot.forEach((docSnap) => {
-    const data = docSnap.data();
-    console.log("Doc data:", data);
-
-    const element = document.createElement("p");
-    element.textContent = data.text || "(empty)";
-    appent.appendChild(element);
-  });
-}
-
-
-// chat gpt debug
 
 
 if (localStorage.getItem("itemListNumber") === null) {
@@ -76,4 +56,5 @@ function loadItems() {
 }
 
 window.addEventListener("load", loadItems);
+
 
