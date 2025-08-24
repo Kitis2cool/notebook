@@ -4,32 +4,29 @@
   <meta charset="UTF-8">
   <title>Chat App</title>
   <style>
-    /* === Your CSS Here === */
     body {
       margin: 0;
       display: flex;
       height: 100vh;
       font-family: Arial, Helvetica, sans-serif;
-      background: #091f36; /* Purple Shadow */
+      background: #091f36; 
       color: #f5f5f5;
     }
 
     /* Sidebar */
     #sidebar {
       width: 240px;
-      background: #0f2862; /* Blue Popsicle */
+      background: #0f2862; 
       border-right: 1px solid #4f5f76;
       padding: 15px;
       overflow-y: auto;
     }
-
     #sidebar h3 {
       margin: 0 0 10px;
       font-size: 16px;
       font-weight: bold;
       color: #fff;
     }
-
     .online-user {
       padding: 6px 8px;
       border-radius: 6px;
@@ -39,23 +36,19 @@
       background: #4f5f76;
       color: #fff;
     }
-
     .online-user:hover {
       background: #9e363a;
     }
-
     .online-user.selected {
       background: #9e363a;
       font-weight: bold;
     }
-
     .last-seen {
       font-size: 11px;
       color: #ccc;
       display: block;
       margin-top: 2px;
     }
-
     #chatAllBtn {
       width: 100%;
       padding: 8px;
@@ -86,7 +79,6 @@
       background: #4f5f76;
       border-bottom: 1px solid #333;
     }
-
     .tab {
       padding: 8px 14px;
       cursor: pointer;
@@ -98,17 +90,14 @@
       transition: background 0.2s;
       color: #fff;
     }
-
     .tab:hover {
       background: #4f5f76;
     }
-
     .tab.active {
       background: #0f2862;
       font-weight: bold;
       border-bottom: 2px solid #9e363a;
     }
-
     .tab .close-btn {
       margin-left: 6px;
       color: #c00;
@@ -123,30 +112,30 @@
       padding: 12px;
       background: #091f36;
     }
-
     .note-item {
       margin-bottom: 8px;
       padding: 8px 10px;
       border-radius: 8px;
       font-size: 14px;
       display: flex;
-      justify-content: space-between;
-      align-items: center;
+      flex-direction: column;
       word-wrap: break-word;
       box-shadow: 0 1px 2px rgba(0,0,0,0.3);
       color: #fff;
     }
-
     .own-message {
       background-color: #0f2862;
     }
-
     .private-message {
       background-color: #4f5f76;
     }
-
+    .note-item img {
+      max-width: 200px;
+      border-radius: 8px;
+      margin-top: 6px;
+    }
     .note-item button {
-      margin-left: 10px;
+      margin-top: 6px;
       border: none;
       background: #9e363a;
       color: #fff;
@@ -163,7 +152,7 @@
     .reactions {
       display: flex;
       gap: 4px;
-      margin-left: 8px;
+      margin-top: 6px;
     }
     .reaction {
       cursor: pointer;
@@ -183,7 +172,6 @@
       gap: 6px;
       border-top: 1px solid #333;
     }
-
     #username {
       width: 100px;
       padding: 5px;
@@ -194,7 +182,6 @@
       font-size: 12px;
       color: #fff;
     }
-
     #noteInput {
       flex: 1;
       height: 32px;
@@ -205,8 +192,7 @@
       background: #fff;
       color: #000;
     }
-
-    #sendBtn, #logoutBtn {
+    #sendBtn, #logoutBtn, #uploadBtn {
       padding: 0 15px;
       border: none;
       height: 32px;
@@ -215,27 +201,17 @@
       font-weight: bold;
       transition: background 0.2s;
     }
-
-    #sendBtn {
+    #sendBtn, #uploadBtn, #logoutBtn {
       background: #9e363a;
       color: #fff;
     }
-    #sendBtn:hover {
-      background: #7a2a2d;
-    }
-
-    #logoutBtn {
-      background: #9e363a;
-      color: #fff;
-    }
-    #logoutBtn:hover {
+    #sendBtn:hover, #uploadBtn:hover, #logoutBtn:hover {
       background: #7a2a2d;
     }
   </style>
 </head>
 
 <body>
-
 <div id="sidebar">
   <h3>Online Users</h3>
   <div id="onlineUsersList"></div>
@@ -243,7 +219,7 @@
 </div>
 
 <div id="chatContainer">
-  <div id="tabs"></div> <!-- Tabs -->
+  <div id="tabs"></div>
   <div id="notesList"></div>
   <div id="chatBar">
     <input id="username" readonly>
@@ -279,14 +255,12 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const storage = getStorage(app);
 
-// ----------- LOGIN CHECK -------------
+// LOGIN CHECK
 const loggedInUser = localStorage.getItem("loggedInUser");
-if (!loggedInUser) {
-  window.location.href = "login.html"; 
-}
+if (!loggedInUser) window.location.href = "login.html"; 
 document.getElementById("username").value = loggedInUser;
 
-// ----------- ONLINE USERS -------------
+// ONLINE USERS
 async function goOnline() {
   const userRef = doc(db, "onlineUsers", loggedInUser); 
   await setDoc(userRef, { username: loggedInUser, lastActive: Date.now() });
@@ -297,7 +271,7 @@ setInterval(async () => {
   await setDoc(userRef, { username: loggedInUser, lastActive: Date.now() }, { merge: true });
 }, 30000);
 
-// ----------- TABS SYSTEM -------------
+// TABS
 const tabsContainer = document.getElementById("tabs");
 let openTabs = {};
 let activeTab = "all";
@@ -334,15 +308,12 @@ function openTab(user) {
   highlightActiveTab();
   displayMessages();
 }
-
 function highlightActiveTab() {
   Object.values(openTabs).forEach(tab => tab.classList.remove("active"));
   if (openTabs[activeTab]) openTabs[activeTab].classList.add("active");
 }
 
-// ----------- MESSAGES -------------
-const notesList = document.getElementById("notesList");
-
+// SEND MESSAGE
 async function sendMessage(imageUrl=null) {
   const text = document.getElementById("noteInput").value.trim();
   if (!text && !imageUrl) return;
@@ -351,17 +322,15 @@ async function sendMessage(imageUrl=null) {
   });
   document.getElementById("noteInput").value="";
 }
-
 document.getElementById("sendBtn").onclick = () => sendMessage();
 document.getElementById("noteInput").addEventListener("keydown", e=>{
   if(e.key==="Enter"){ e.preventDefault(); sendMessage(); }
 });
 
-// ----------- IMAGE UPLOAD -------------
+// IMAGE UPLOAD
 document.getElementById("uploadBtn").onclick = () => {
   document.getElementById("imageUpload").click();
 };
-
 document.getElementById("imageUpload").onchange = async (e) => {
   const file = e.target.files[0];
   if (!file) return;
@@ -371,7 +340,7 @@ document.getElementById("imageUpload").onchange = async (e) => {
   sendMessage(url);
 };
 
-// ----------- DISPLAY MESSAGES -------------
+// DISPLAY MESSAGES
 function displayMessages() {
   const q = query(collection(db,"messages"),orderBy("timestamp"));
   onSnapshot(q, snapshot=>{
@@ -393,24 +362,24 @@ function displayMessages() {
     notesList.scrollTop = notesList.scrollHeight;
   });
 }
-
 function renderMessage(docSnap,data){
   const div = document.createElement("div");
   div.className="note-item";
   
-  let content = `${data.from} ➤ ${data.to}`;
-  if (data.text) content += `: ${data.text}`;
-  div.textContent = content;
+  let header = `${data.from} ➤ ${data.to}`;
+  if (data.text) header += `: ${data.text}`;
+  const textSpan = document.createElement("span");
+  textSpan.textContent = header;
+  div.appendChild(textSpan);
 
   if(data.imageUrl){
     const img = document.createElement("img");
     img.src = data.imageUrl;
     div.appendChild(img);
   }
-
   if(data.from===loggedInUser) div.classList.add("own-message");
 
-  // delete button (admin or owner)
+  // delete
   if(data.from===loggedInUser || loggedInUser==="admin"){
     const delBtn=document.createElement("button");
     delBtn.textContent="Delete";
@@ -421,11 +390,9 @@ function renderMessage(docSnap,data){
   // reactions
   const reactBtn = document.createElement("button");
   reactBtn.textContent="😊";
-  reactBtn.className="react-btn";
   reactBtn.onclick = () => addReaction(docSnap.id);
   div.appendChild(reactBtn);
 
-  // show reactions
   if (data.reactions && Object.keys(data.reactions).length>0){
     const reactionDiv=document.createElement("div");
     reactionDiv.className="reactions";
@@ -440,7 +407,7 @@ function renderMessage(docSnap,data){
   notesList.appendChild(div);
 }
 
-// ----------- ADD REACTION -------------
+// ADD REACTION
 async function addReaction(messageId){
   const emojis=["👍","❤️","😂","🔥","😮"];
   const choice=prompt("React with emoji: " + emojis.join(" "));
@@ -450,11 +417,11 @@ async function addReaction(messageId){
   }
 }
 
-// ----------- INIT -------------
+// INIT
 document.getElementById("chatAllBtn").onclick = () => openTab("all");
 openTab("all"); 
 
-// ----------- LOGOUT -------------
+// LOGOUT
 document.getElementById("logoutBtn").onclick = async ()=>{
   await deleteDoc(doc(db,"onlineUsers",loggedInUser));
   localStorage.removeItem("loggedInUser");
@@ -463,4 +430,3 @@ document.getElementById("logoutBtn").onclick = async ()=>{
 </script>
 </body>
 </html>
-
