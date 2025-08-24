@@ -42,7 +42,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
 import { 
   getFirestore, collection, addDoc, onSnapshot, deleteDoc, 
-  doc, query, orderBy, getDocs, updateDoc, where, setDoc 
+  doc, query, orderBy, setDoc 
 } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -58,40 +58,12 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// ----------- LOGIN/REGISTER -------------
-const loggedInUserKey = 'loggedInUser';
-let loggedInUser = localStorage.getItem(loggedInUserKey);
-
-async function checkLogin() {
-  if (!loggedInUser) {
-    let username = prompt("Enter username:");
-    let password = prompt("Enter password:");
-
-    const usersRef = collection(db, "users");
-    const snapshot = await getDocs(query(usersRef, where("username","==",username)));
-
-    if (snapshot.empty) {
-      await addDoc(usersRef, { username, password });
-      loggedInUser = username;
-      localStorage.setItem(loggedInUserKey, username);
-    } else {
-      let valid = false;
-      snapshot.forEach(docSnap => {
-        const data = docSnap.data();
-        if (data.password === password) valid = true;
-      });
-      if (!valid) {
-        alert("Invalid password. Refresh to try again.");
-        throw "Login failed";
-      }
-      loggedInUser = username;
-      localStorage.setItem(loggedInUserKey, username);
-    }
-  }
-  document.getElementById("username").value = loggedInUser;
+// ----------- LOGIN CHECK -------------
+const loggedInUser = localStorage.getItem("loggedInUser");
+if (!loggedInUser) {
+  window.location.href = "login.html"; // redirect if not logged in
 }
-
-await checkLogin();
+document.getElementById("username").value = loggedInUser;
 
 // ----------- ONLINE USERS -------------
 const onlineUsersList = document.getElementById("onlineUsersList");
@@ -108,7 +80,6 @@ setInterval(async () => {
   await setDoc(userRef, { username: loggedInUser, lastActive: Date.now() }, { merge: true });
 }, 30000);
 
-// Format "last seen"
 function formatLastSeen(ms) {
   const seconds = Math.floor(ms/1000);
   if (seconds < 60) return "just now";
@@ -118,19 +89,33 @@ function formatLastSeen(ms) {
   return hours + " hr ago";
 }
 
-// Display users
 onSnapshot(collection(db, "onlineUsers"), snapshot => {
   onlineUsersList.innerHTML = "";
   const now = Date.now();
-  snapshot.forEach(docSnap => {
-    const user = docSnap.data().username;
-    const lastActive = docSnap.data().lastActive || 0;
-    if (user === loggedInUser) return;
+  const usersMap = {};
 
+  snapshot.forEach(docSnap => {
+    const data = docSnap.data();
+    const user = data.username;
+    const lastActive = data.lastActive || 0;
+    if (user === loggedInUser) return;
+    if (!usersMap[user] || usersMap[user].lastActive < lastActive) {
+      usersMap[user] = { user, lastActive };
+    }
+  });
+
+  const sortedUsers = Object.values(usersMap).sort((a, b) => {
+    const aOnline = now - a.lastActive <= 60 * 1000;
+    const bOnline = now - b.lastActive <= 60 * 1000;
+    if (aOnline && !bOnline) return -1;
+    if (!aOnline && bOnline) return 1;
+    return b.lastActive - a.lastActive;
+  });
+
+  sortedUsers.forEach(({ user, lastActive }) => {
     const div = document.createElement("div");
     div.className = "online-user" + (selectedUser===user?" selected":"");
-    
-    // online if active within last minute
+
     if (now - lastActive <= 60 * 1000) {
       div.textContent = user + " (online)";
     } else {
@@ -203,13 +188,12 @@ function displayMessages() {
     notesList.scrollTop = notesList.scrollHeight;
   });
 }
-
 displayMessages();
 
 // Logout
 document.getElementById("logoutBtn").onclick = async ()=>{
   await deleteDoc(doc(db,"onlineUsers",loggedInUser));
-  localStorage.removeItem(loggedInUserKey);
+  localStorage.removeItem("loggedInUser");
   window.location.href="login.html";
 };
 </script>
