@@ -35,6 +35,7 @@ body {
   padding-bottom: 6px;
   letter-spacing: 0.5px;
 }
+
 .unread-badge {
   background: #9e363a;
   color: #fff;
@@ -44,6 +45,7 @@ body {
   font-weight: bold;
   margin-left: 8px;
 }
+
 .online-user {
   padding: 10px 12px;
   border-radius: 10px;
@@ -56,10 +58,12 @@ body {
   align-items: center;
   justify-content: space-between;
 }
+
 .online-user:hover {
   background: rgba(255,255,255,0.15);
   transform: translateX(4px);
 }
+
 .online-user.selected {
   background: #4f5f76;
   font-weight: bold;
@@ -77,17 +81,6 @@ body {
   font-weight: bold;
   color: #ffcc00;
   margin-left: 6px;
-}
-
-/* Unread badge */
-.unread-badge {
-  background: #9e363a;
-  color: #fff;
-  font-size: 12px;
-  padding: 2px 6px;
-  border-radius: 12px;
-  font-weight: bold;
-  margin-left: 8px;
 }
 
 /* Chat All Button */
@@ -181,9 +174,18 @@ body {
   position: relative;
   box-shadow: 0 3px 6px rgba(0,0,0,0.25);
   transition: transform 0.2s;
+  display: flex;
+  gap: 10px;
+  align-items: center;
 }
 .note-item:hover {
   transform: translateY(-2px);
+}
+
+.note-item img {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
 }
 
 .note-item:not(.own-message) {
@@ -296,10 +298,9 @@ body {
   <br><br>
   <input type="color" id="bgSelector" onchange="changeBackground()">
   <p><span style="font-weight: bolder;">Updates/News:</span><br><br>
-  
   <span style="color:#ffcc00;font-weight:bold;">Happy birthday Victor! 🎉</span><br><br>
-  I was going to add profile pictures but firebase has a 10gb free storage limit and message data takes a big chunk of that
-</p>
+  Now with profile pictures and profanity filter!
+  </p>
 </div>
 
 <div id="chatContainer">
@@ -315,10 +316,7 @@ body {
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-import { 
-  getFirestore, collection, addDoc, onSnapshot, deleteDoc, 
-  doc, query, orderBy, setDoc 
-} from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, query, orderBy, setDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBXhiyGWev_pgR04Xqwq-09cE_oyrLWnU8",
@@ -332,31 +330,29 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// ----------- ADMIN SETTINGS -------------
+// Admin & login
 const ADMIN_USER = "kitis";
 let isAdmin = false;
-
-// ----------- LOGIN -------------
 const loggedInUser = localStorage.getItem("loggedInUser");
 if (!loggedInUser) window.location.href = "login.html";
 document.getElementById("username").value = loggedInUser;
 if (loggedInUser === ADMIN_USER) isAdmin = true;
 
-// ----------- UNREAD TRACKING -------------
+// Unread tracking
 let unreadCounts = {};
 let processedMessageIds = new Set();
 
-// ----------- ONLINE USERS -------------
+// Online users
 const onlineUsersList = document.getElementById("onlineUsersList");
 
 async function goOnline() {
   const userRef = doc(db, "onlineUsers", loggedInUser); 
-  await setDoc(userRef, { username: loggedInUser, lastActive: Date.now() });
+  await setDoc(userRef, { username: loggedInUser, lastActive: Date.now(), avatar: "https://i.pravatar.cc/30?u="+loggedInUser });
 }
 goOnline();
 setInterval(async () => {
   const userRef = doc(db, "onlineUsers", loggedInUser);
-  await setDoc(userRef, { username: loggedInUser, lastActive: Date.now() }, { merge: true });
+  await setDoc(userRef, { username: loggedInUser, lastActive: Date.now(), avatar: "https://i.pravatar.cc/30?u="+loggedInUser }, { merge: true });
 }, 30000);
 
 function formatLastSeen(ms) {
@@ -368,6 +364,18 @@ function formatLastSeen(ms) {
   return hours + " hr ago";
 }
 
+// Profanity filter
+const bannedWords = ["badword1","badword2","badword3"];
+function filterProfanity(text){
+  let filtered = text;
+  bannedWords.forEach(w => {
+    const regex = new RegExp(w,"gi");
+    filtered = filtered.replace(regex,"****");
+  });
+  return filtered;
+}
+
+// Render online users
 onSnapshot(collection(db, "onlineUsers"), snapshot => {
   onlineUsersList.innerHTML = "";
   const now = Date.now();
@@ -376,10 +384,9 @@ onSnapshot(collection(db, "onlineUsers"), snapshot => {
     const data = docSnap.data();
     const user = data.username;
     const lastActive = data.lastActive || 0;
+    const avatar = data.avatar || "https://i.pravatar.cc/30?u="+user;
     if (user === loggedInUser) return;
-    if (!usersMap[user] || usersMap[user].lastActive < lastActive) {
-      usersMap[user] = { user, lastActive };
-    }
+    usersMap[user] = { user, lastActive, avatar };
   });
 
   const sortedUsers = Object.values(usersMap).sort((a, b) => {
@@ -390,7 +397,7 @@ onSnapshot(collection(db, "onlineUsers"), snapshot => {
     return b.lastActive - a.lastActive;
   });
 
-  sortedUsers.forEach(({ user, lastActive }) => {
+  sortedUsers.forEach(({ user, lastActive, avatar }) => {
     const div = document.createElement("div");
     div.className = "online-user";
     div.dataset.user = user;
@@ -423,13 +430,19 @@ onSnapshot(collection(db, "onlineUsers"), snapshot => {
     right.appendChild(unreadHolder);
     div.appendChild(right);
 
+    const avatarImg = document.createElement("img");
+    avatarImg.src = avatar;
+    avatarImg.style.marginRight = "8px";
+    avatarImg.style.borderRadius = "800px";
+    div.prepend(avatarImg);
+
     div.onclick = () => { openTab(user); };
     onlineUsersList.appendChild(div);
     updateUnreadBadge(user);
   });
 });
 
-// ----------- TABS -------------
+// Tabs
 const tabsContainer = document.getElementById("tabs");
 let openTabs = {};
 let activeTab = "all";
@@ -482,12 +495,15 @@ function highlightActiveTab() {
   if (openTabs[activeTab]) openTabs[activeTab].classList.add("active");
 }
 
-// ----------- MESSAGES -------------
+// Messages
 const notesList = document.getElementById("notesList");
+let allMessages = [];
 
+// Send message
 async function sendMessage() {
-  const text = document.getElementById("noteInput").value.trim();
+  let text = document.getElementById("noteInput").value.trim();
   if (!text) return;
+  text = filterProfanity(text); // filter
   await addDoc(collection(db, "messages"), { 
     text, from: loggedInUser, to: activeTab, timestamp: Date.now() 
   });
@@ -498,32 +514,48 @@ document.getElementById("noteInput").addEventListener("keydown", e=>{
   if(e.key==="Enter"){ e.preventDefault(); sendMessage(); }
 });
 
-function displayMessages() {
-  const q = query(collection(db,"messages"),orderBy("timestamp"));
-  onSnapshot(q, snapshot=>{
-    notesList.innerHTML="";
+// One snapshot listener
+const q = query(collection(db,"messages"), orderBy("timestamp"));
+onSnapshot(q, snapshot => {
+    allMessages = [];
     const now = Date.now();
-    snapshot.forEach(async docSnap=>{
-      const data = docSnap.data();
-      if(now-data.timestamp>10*60*1000){ await deleteDoc(doc(db,"messages",docSnap.id)); return; }
-
-      if (activeTab==="all") {
-        if (data.to==="all" || data.from===loggedInUser) renderMessage(docSnap,data);
-      } else {
-        if ((data.from===activeTab && data.to===loggedInUser) ||
-            (data.to===activeTab && data.from===loggedInUser)) {
-          renderMessage(docSnap,data);
+    snapshot.forEach(async docSnap => {
+        const data = docSnap.data();
+        if(now - data.timestamp > 10*60*1000) {
+            await deleteDoc(doc(db,"messages", docSnap.id));
+            return;
         }
-      }
+        allMessages.push({ id: docSnap.id, data });
+    });
+    displayMessages();
+});
+
+function displayMessages() {
+    notesList.innerHTML = "";
+    const now = Date.now();
+    allMessages.forEach(({ id, data }) => {
+        if(activeTab === "all") {
+            if(data.to === "all" || data.from === loggedInUser) renderMessage({ id }, data);
+        } else {
+            if ((data.from === activeTab && data.to === loggedInUser) ||
+                (data.to === activeTab && data.from === loggedInUser)) renderMessage({ id }, data);
+        }
     });
     notesList.scrollTop = notesList.scrollHeight;
-  });
 }
 
-function renderMessage(docSnap,data){
+function renderMessage(docSnap, data){
   const div = document.createElement("div");
   div.className="note-item";
-  div.textContent = `${data.from} ➤ ${data.to}: ${data.text}`;
+
+  // Avatar
+  const avatarImg = document.createElement("img");
+  avatarImg.src = `https://i.pravatar.cc/30?u=${data.from}`;
+  div.appendChild(avatarImg);
+
+  const content = document.createElement("span");
+  content.textContent = `${data.from} ➤ ${data.to}: ${data.text}`;
+  div.appendChild(content);
 
   if(data.from===ADMIN_USER) div.classList.add("admin-message");
   if(data.from===loggedInUser) div.classList.add("own-message");
@@ -537,26 +569,19 @@ function renderMessage(docSnap,data){
   }
   notesList.appendChild(div);
 
-  // --- UNREAD LOGIC ---
   const msgId = docSnap.id;
   if (!processedMessageIds.has(msgId)) {
     processedMessageIds.add(msgId);
-    if (
-      data.to === loggedInUser &&
-      data.from !== loggedInUser &&
-      data.to !== "all" &&
-      activeTab !== data.from
-    ) {
+    if (data.to === loggedInUser && data.from !== loggedInUser && data.to !== "all" && activeTab !== data.from) {
       unreadCounts[data.from] = (unreadCounts[data.from] || 0) + 1;
       updateUnreadBadge(data.from);
     }
   }
 }
 
-// ----------- UNREAD BADGES -------------
+// Unread badges
 function updateUnreadBadge(user) {
   const count = unreadCounts[user] || 0;
-
   if (openTabs[user]) {
     const tab = openTabs[user];
     const oldBadge = tab.querySelector(".unread-badge");
@@ -568,7 +593,6 @@ function updateUnreadBadge(user) {
       tab.appendChild(badge);
     }
   }
-
   const userDiv = document.querySelector(`.online-user[data-user="${CSS.escape(user)}"]`);
   if (userDiv) {
     const holder = userDiv.querySelector(".unread-holder");
@@ -584,11 +608,11 @@ function updateUnreadBadge(user) {
   }
 }
 
-// ----------- INIT -------------
+// Init
 document.getElementById("chatAllBtn").onclick = () => openTab("all");
 openTab("all");
 
-// ----------- LOGOUT -------------
+// Logout
 document.getElementById("logoutBtn").onclick = async ()=>{
   await deleteDoc(doc(db,"onlineUsers",loggedInUser));
   localStorage.removeItem("loggedInUser");
@@ -598,14 +622,11 @@ document.getElementById("logoutBtn").onclick = async ()=>{
 
 <script>
 function changeBackground() {
-  console.log("running");
-  var notesList2 = document.getElementById("notesList");
-  var backgroundColorVAR = document.getElementById("bgSelector");
-  var backgroundColorVARValue = backgroundColorVAR.value;
-
+  const notesList2 = document.getElementById("notesList");
+  const backgroundColorVAR = document.getElementById("bgSelector");
+  const backgroundColorVARValue = backgroundColorVAR.value;
   notesList2.style.backgroundColor = backgroundColorVARValue;
 }
 </script>
 </body>
 </html>
-
