@@ -1,201 +1,304 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<title>Kitis Chatroom</title>
-<style>
-  body { margin:0; display:flex; height:100vh; font-family: Arial; }
-  #sidebar { width:220px; background:#eee; padding:10px; overflow-y:auto; }
-  #chatContainer { flex:1; display:flex; flex-direction:column; }
-  #notesList { flex:1; overflow-y:auto; padding:10px; background:#f0f0f0; }
-  .note-item { margin-bottom:5px; padding:5px; border-radius:5px; display:flex; justify-content:space-between; align-items:center; }
-  .own-message { background-color: #d1ffd1; }
-  .private-message { background-color: #ffe4b3; }
-  #chatBar { display:flex; padding:10px; background:#ccc; align-items:center; gap:5px; }
-  #noteInput { flex:1; height:30px; border-radius:5px; padding:5px; }
-  #logoutBtn { background-color:#f55; border:none; height:30px; border-radius:5px; cursor:pointer; }
-  #sendBtn, #chatAllBtn { border:none; height:30px; border-radius:5px; cursor:pointer; background:#5a5; }
-  .online-user { cursor:pointer; margin:5px 0; font-size:14px; }
-  .online-user.selected { font-weight:bold; }
-  .last-seen { font-size:12px; color:#555; margin-left:5px; }
-</style>
+  <title>Chatroom</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      height: 100vh;
+      margin: 0;
+      background: #f0f0f0;
+    }
+    #sidebar {
+      width: 200px;
+      background: #eee;
+      padding: 10px;
+      overflow-y: auto;
+    }
+    #main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    #tabsContainer {
+      display: flex;
+      gap: 5px;
+      background: #ddd;
+      padding: 5px;
+      overflow-x: auto;
+    }
+    .tab {
+      padding: 5px 10px;
+      border-radius: 5px;
+      background: #bbb;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .tab.active {
+      background: #4CAF50;
+      color: white;
+    }
+    .tab .badge {
+      background: red;
+      color: white;
+      border-radius: 50%;
+      padding: 2px 6px;
+      font-size: 12px;
+      margin-left: 5px;
+    }
+    #notesList {
+      flex: 1;
+      padding: 10px;
+      overflow-y: auto;
+      background: white;
+    }
+    #inputBar {
+      display: flex;
+      padding: 10px;
+      background: #eee;
+    }
+    #messageInput {
+      flex: 1;
+      padding: 5px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+    button {
+      margin-left: 5px;
+      padding: 5px 10px;
+      border: none;
+      border-radius: 5px;
+      background: #4CAF50;
+      color: white;
+      cursor: pointer;
+    }
+    .online-user {
+      cursor: pointer;
+      margin: 2px 0;
+    }
+    .online-user.selected {
+      font-weight: bold;
+      color: green;
+    }
+    .last-seen {
+      font-size: 0.8em;
+      color: gray;
+      margin-left: 5px;
+    }
+  </style>
 </head>
 <body>
-
-<div id="sidebar">
-  <h3>Online Users</h3>
-  <div id="onlineUsersList"></div>
-  <button id="chatAllBtn">Chat All</button>
-</div>
-
-<div id="chatContainer">
-  <div id="notesList"></div>
-  <div id="chatBar">
-    <input id="username" readonly>
-    <input type="text" id="noteInput" placeholder="Write a message...">
-    <button id="sendBtn">Send</button>
-    <button id="logoutBtn">Logout</button>
+  <div id="sidebar">
+    <h3>Online Users</h3>
+    <div id="onlineUsersList"></div>
+    <button onclick="logout()">Logout</button>
   </div>
-</div>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-import { 
-  getFirestore, collection, addDoc, onSnapshot, deleteDoc, 
-  doc, query, orderBy, setDoc 
-} from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+  <div id="main">
+    <div id="tabsContainer">
+      <div class="tab active" data-user="all">All</div>
+    </div>
+    <div id="notesList"></div>
+    <div id="inputBar">
+      <input type="text" id="messageInput" placeholder="Type a message...">
+      <button onclick="sendMessage()">Send</button>
+    </div>
+  </div>
 
-const firebaseConfig = {
-  apiKey: "AIzaSyBXhiyGWev_pgR04Xqwq-09cE_oyrLWnU8",
-  authDomain: "kitisnotebook.firebaseapp.com",
-  projectId: "kitisnotebook",
-  storageBucket: "kitisnotebook.firebasestorage.app",
-  messagingSenderId: "450680847245",
-  appId: "1:450680847245:web:2e4ebb71ccd3a7920bdbc4",
-  measurementId: "G-W3ZVV6N6KK"
-};
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT.firebaseapp.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT.appspot.com",
+      messagingSenderId: "SENDER_ID",
+      appId: "APP_ID"
+    };
 
-// ----------- LOGIN CHECK -------------
-const loggedInUser = localStorage.getItem("loggedInUser");
-if (!loggedInUser) {
-  window.location.href = "login.html"; // redirect if not logged in
-}
-document.getElementById("username").value = loggedInUser;
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
 
-// ----------- ONLINE USERS -------------
-const onlineUsersList = document.getElementById("onlineUsersList");
-let selectedUser = "all";
+    const loggedInUser = localStorage.getItem("loggedInUser");
+    if (!loggedInUser) window.location.href = "login.html";
 
-async function goOnline() {
-  const userRef = doc(db, "onlineUsers", loggedInUser); 
-  await setDoc(userRef, { username: loggedInUser, lastActive: Date.now() });
-}
-goOnline();
+    const notesList = document.getElementById("notesList");
+    const messageInput = document.getElementById("messageInput");
+    const onlineUsersList = document.getElementById("onlineUsersList");
+    const tabsContainer = document.getElementById("tabsContainer");
 
-setInterval(async () => {
-  const userRef = doc(db, "onlineUsers", loggedInUser);
-  await setDoc(userRef, { username: loggedInUser, lastActive: Date.now() }, { merge: true });
-}, 30000);
+    let selectedUser = "all";
 
-function formatLastSeen(ms) {
-  const seconds = Math.floor(ms/1000);
-  if (seconds < 60) return "just now";
-  const minutes = Math.floor(seconds/60);
-  if (minutes < 60) return minutes + " min ago";
-  const hours = Math.floor(minutes/60);
-  return hours + " hr ago";
-}
-
-onSnapshot(collection(db, "onlineUsers"), snapshot => {
-  onlineUsersList.innerHTML = "";
-  const now = Date.now();
-  const usersMap = {};
-
-  snapshot.forEach(docSnap => {
-    const data = docSnap.data();
-    const user = data.username;
-    const lastActive = data.lastActive || 0;
-    if (user === loggedInUser) return;
-    if (!usersMap[user] || usersMap[user].lastActive < lastActive) {
-      usersMap[user] = { user, lastActive };
-    }
-  });
-
-  const sortedUsers = Object.values(usersMap).sort((a, b) => {
-    const aOnline = now - a.lastActive <= 60 * 1000;
-    const bOnline = now - b.lastActive <= 60 * 1000;
-    if (aOnline && !bOnline) return -1;
-    if (!aOnline && bOnline) return 1;
-    return b.lastActive - a.lastActive;
-  });
-
-  sortedUsers.forEach(({ user, lastActive }) => {
-    const div = document.createElement("div");
-    div.className = "online-user" + (selectedUser===user?" selected":"");
-
-    if (now - lastActive <= 60 * 1000) {
-      div.textContent = user + " (online)";
-    } else {
-      div.textContent = user;
-      const span = document.createElement("span");
-      span.className = "last-seen";
-      span.textContent = `(last seen ${formatLastSeen(now - lastActive)})`;
-      div.appendChild(span);
-    }
-
-    div.onclick = () => { selectedUser = user; highlightSelectedUser(); displayMessages(); };
-    onlineUsersList.appendChild(div);
-  });
-});
-
-function highlightSelectedUser() {
-  const users = document.querySelectorAll(".online-user");
-  users.forEach(u=>u.classList.remove("selected"));
-  if (selectedUser!=="all") {
-    const el = Array.from(users).find(u=>u.textContent.includes(selectedUser));
-    if(el) el.classList.add("selected");
-  }
-}
-
-document.getElementById("chatAllBtn").onclick = () => { selectedUser="all"; highlightSelectedUser(); displayMessages(); };
-
-// ----------- MESSAGES -------------
-const notesList = document.getElementById("notesList");
-
-async function sendMessage() {
-  const text = document.getElementById("noteInput").value.trim();
-  if (!text) return;
-  await addDoc(collection(db, "messages"), { text, from: loggedInUser, to: selectedUser, timestamp: Date.now() });
-  document.getElementById("noteInput").value="";
-}
-
-document.getElementById("sendBtn").onclick = sendMessage;
-
-document.getElementById("noteInput").addEventListener("keydown", e=>{
-  if(e.key==="Enter"){ e.preventDefault(); sendMessage(); }
-});
-
-function displayMessages() {
-  const q = query(collection(db,"messages"),orderBy("timestamp"));
-  onSnapshot(q, snapshot=>{
-    notesList.innerHTML="";
-    const now = Date.now();
-    snapshot.forEach(async docSnap=>{
-      const data = docSnap.data();
-      if(now-data.timestamp>10*60*1000){ await deleteDoc(doc(db,"messages",docSnap.id)); return; }
-
-      if(data.to==="all" || data.to===loggedInUser || data.from===loggedInUser){
-        const div = document.createElement("div");
-        div.className="note-item";
-        div.textContent = `${data.from} ➤ ${data.to}: ${data.text}`;
-
-        if(data.from===loggedInUser) div.classList.add("own-message");
-        else if(data.to===loggedInUser && data.to!=="all") div.classList.add("private-message");
-
-        if(data.from===loggedInUser){
-          const delBtn=document.createElement("button");
-          delBtn.textContent="Delete";
-          delBtn.onclick=()=>deleteDoc(doc(db,"messages",docSnap.id));
-          div.appendChild(delBtn);
-        }
-
-        notesList.appendChild(div);
+    // ---- Tabs System ----
+    function openTab(username) {
+      if (!document.querySelector(`.tab[data-user="${username}"]`)) {
+        const tab = document.createElement("div");
+        tab.className = "tab";
+        tab.dataset.user = username;
+        tab.textContent = username;
+        tab.onclick = () => {
+          selectedUser = username;
+          highlightTabs();
+          displayMessages();
+          clearBadge(username);
+        };
+        tabsContainer.appendChild(tab);
       }
-    });
-    notesList.scrollTop = notesList.scrollHeight;
-  });
-}
-displayMessages();
+    }
 
-// Logout
-document.getElementById("logoutBtn").onclick = async ()=>{
-  await deleteDoc(doc(db,"onlineUsers",loggedInUser));
-  localStorage.removeItem("loggedInUser");
-  window.location.href="login.html";
-};
-</script>
+    function highlightTabs() {
+      document.querySelectorAll(".tab").forEach(tab => {
+        tab.classList.remove("active");
+        if (tab.dataset.user === selectedUser) tab.classList.add("active");
+      });
+    }
+
+    function addBadge(username) {
+      let tab = document.querySelector(`.tab[data-user="${username}"]`);
+      if (!tab) openTab(username);
+      let badge = tab.querySelector(".badge");
+      if (!badge) {
+        badge = document.createElement("span");
+        badge.className = "badge";
+        badge.textContent = "1";
+        tab.appendChild(badge);
+      } else {
+        badge.textContent = parseInt(badge.textContent) + 1;
+      }
+    }
+
+    function clearBadge(username) {
+      const tab = document.querySelector(`.tab[data-user="${username}"]`);
+      if (tab) {
+        const badge = tab.querySelector(".badge");
+        if (badge) badge.remove();
+      }
+    }
+
+    // ---- Notifications ----
+    if (Notification.permission !== "granted") {
+      Notification.requestPermission();
+    }
+
+    function notifyUser(from, message) {
+      if (Notification.permission === "granted" && document.hidden) {
+        new Notification(`Message from ${from}`, { body: message });
+      }
+    }
+
+    // ---- Firestore Messages ----
+    const q = query(collection(db, "messages"), orderBy("timestamp"));
+    let allMessages = [];
+
+    onSnapshot(q, snapshot => {
+      allMessages = [];
+      snapshot.forEach(docSnap => {
+        allMessages.push(docSnap.data());
+      });
+      displayMessages();
+    });
+
+    function displayMessages() {
+      notesList.innerHTML = "";
+      allMessages.forEach(msg => {
+        if (selectedUser === "all") {
+          if (!msg.to || msg.to === "all") renderMessage(msg);
+        } else if (
+          (msg.from === loggedInUser && msg.to === selectedUser) ||
+          (msg.from === selectedUser && msg.to === loggedInUser)
+        ) {
+          renderMessage(msg);
+        }
+        // Notification + badge for unseen messages
+        if (msg.to === loggedInUser && msg.from !== loggedInUser) {
+          if (selectedUser !== msg.from) {
+            addBadge(msg.from);
+            notifyUser(msg.from, msg.text);
+          }
+          openTab(msg.from);
+        }
+      });
+    }
+
+    function renderMessage(msg) {
+      const div = document.createElement("div");
+      div.textContent = `${msg.from}: ${msg.text}`;
+      notesList.appendChild(div);
+    }
+
+    async function sendMessage() {
+      const text = messageInput.value.trim();
+      if (!text) return;
+      await addDoc(collection(db, "messages"), {
+        text,
+        from: loggedInUser,
+        to: selectedUser === "all" ? "all" : selectedUser,
+        timestamp: Date.now()
+      });
+      messageInput.value = "";
+    }
+
+    // ---- Online Users ----
+    async function goOnline() {
+      const userRef = doc(db, "onlineUsers", loggedInUser); 
+      await setDoc(userRef, { username: loggedInUser, lastActive: Date.now() });
+    }
+    goOnline();
+    setInterval(async () => {
+      const userRef = doc(db, "onlineUsers", loggedInUser);
+      await setDoc(userRef, { username: loggedInUser, lastActive: Date.now() }, { merge: true });
+    }, 30000);
+
+    onSnapshot(collection(db, "onlineUsers"), snapshot => {
+      onlineUsersList.innerHTML = "";
+      const now = Date.now();
+      const usersMap = {};
+
+      snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        const user = data.username;
+        const lastActive = data.lastActive || 0;
+        if (user === loggedInUser) return;
+        if (!usersMap[user] || usersMap[user].lastActive < lastActive) {
+          usersMap[user] = { user, lastActive };
+        }
+      });
+
+      const sortedUsers = Object.values(usersMap).sort((a, b) => b.lastActive - a.lastActive);
+
+      sortedUsers.forEach(({ user, lastActive }) => {
+        const div = document.createElement("div");
+        div.className = "online-user" + (selectedUser === user ? " selected" : "");
+        if (now - lastActive <= 60000) {
+          div.textContent = user + " (online)";
+        } else {
+          div.textContent = user;
+          const span = document.createElement("span");
+          span.className = "last-seen";
+          span.textContent = `(last seen ${Math.floor((now - lastActive) / 60000)} min ago)`;
+          div.appendChild(span);
+        }
+        div.onclick = () => {
+          selectedUser = user;
+          openTab(user);
+          highlightTabs();
+          displayMessages();
+          clearBadge(user);
+        };
+        onlineUsersList.appendChild(div);
+      });
+    });
+
+    // ---- Logout ----
+    function logout() {
+      localStorage.removeItem("loggedInUser");
+      window.location.href = "login.html";
+    }
+    window.logout = logout;
+    window.sendMessage = sendMessage;
+  </script>
 </body>
 </html>
