@@ -4,27 +4,32 @@
     <style>
         body {
             background-color: rgba(122, 122, 122, 0.534);
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 100px;
         }
         input {
             width: 200px;
-            height: 18px;
+            height: 25px;
             border: none;
             border-radius: 8px;
             font-size: medium;
+            padding: 5px;
         }
         button {
-            height: 20px;
-            width: 60px;
+            height: 30px;
+            width: 80px;
             border: none;
             border-radius: 8px;
             background-color: rgb(84, 245, 145);
-            margin-left: 5px;
+            margin: 5px;
+            cursor: pointer;
         }
     </style>
 </head>
 
 <body>
-    <h1>Login page</h1>
+    <h1>Login Page</h1>
 
     <input type="text" id="usernameField" placeholder="Username"><br><br>
     <input type="password" id="passwordField" placeholder="Password"><br><br>
@@ -67,7 +72,7 @@
             }
         }
 
-        // Redirect if already logged in
+        // Auto-redirect if already logged in
         window.onload = () => {
             if (localStorage.getItem("loggedInUser")) {
                 window.location.href = "index.html";
