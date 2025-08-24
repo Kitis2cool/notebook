@@ -8,7 +8,7 @@
   #sidebar { width:220px; background:#eee; padding:10px; overflow-y:auto; }
   #chatContainer { flex:1; display:flex; flex-direction:column; }
   #tabs { display:flex; background:#ddd; border-bottom:1px solid #bbb; }
-  .tab { padding:8px 12px; cursor:pointer; border-right:1px solid #bbb; }
+  .tab { padding:8px 12px; cursor:pointer; border-right:1px solid #bbb; position:relative; }
   .tab.active { background:#fff; font-weight:bold; }
   .tab .close-btn { margin-left:5px; color:red; cursor:pointer; font-size:12px; }
   #notesList { flex:1; overflow-y:auto; padding:10px; background:#f0f0f0; }
@@ -176,6 +176,23 @@ function highlightActiveTab() {
   if (openTabs[activeTab]) openTabs[activeTab].classList.add("active");
 }
 
+// ----------- NOTIFICATIONS -------------
+if ("Notification" in window) {
+  if (Notification.permission !== "granted" && Notification.permission !== "denied") {
+    Notification.requestPermission();
+  }
+}
+
+function showNotification(title, body, tabUser) {
+  if (Notification.permission === "granted") {
+    const notif = new Notification(title, { body });
+    notif.onclick = () => {
+      window.focus();
+      openTab(tabUser);
+    };
+  }
+}
+
 // ----------- MESSAGES -------------
 const notesList = document.getElementById("notesList");
 
@@ -203,12 +220,22 @@ function displayMessages() {
       const data = docSnap.data();
       if(now-data.timestamp>10*60*1000){ await deleteDoc(doc(db,"messages",docSnap.id)); return; }
 
+      // Show messages depending on active tab
       if (activeTab==="all") {
         if (data.to==="all" || data.from===loggedInUser) renderMessage(docSnap,data);
       } else {
         if ((data.from===activeTab && data.to===loggedInUser) ||
             (data.to===activeTab && data.from===loggedInUser)) {
           renderMessage(docSnap,data);
+        }
+      }
+
+      // 🔔 Notifications (only if not your own message)
+      if (data.from !== loggedInUser) {
+        if (data.to === "all" && activeTab !== "all") {
+          showNotification("New message in All Chat", `${data.from}: ${data.text}`, "all");
+        } else if (data.to === loggedInUser && activeTab !== data.from) {
+          showNotification(`New DM from ${data.from}`, data.text, data.from);
         }
       }
     });
