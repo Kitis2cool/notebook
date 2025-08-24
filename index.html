@@ -145,7 +145,6 @@ body {
   font-size: 14px;
   line-height: 1.4;
   position: relative;
-  animation: fadeInUp 0.25s ease;
   box-shadow: 0 3px 6px rgba(0,0,0,0.25);
   transition: transform 0.2s;
 }
@@ -248,18 +247,6 @@ body {
 #sendBtn:hover, #logoutBtn:hover {
   transform: translateY(-2px);
   box-shadow: 0 3px 10px rgba(158,54,58,0.4);
-}
-
-/* Animations */
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }
 
 
@@ -487,6 +474,7 @@ document.getElementById("logoutBtn").onclick = async ()=>{
 </script>
 </body>
 </html>
+
 
 
 
