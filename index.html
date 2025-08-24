@@ -4,7 +4,147 @@
 <meta charset="UTF-8">
 <title>Kitis Chatroom</title>
 <style>
-/* --- same styles as before, plus reactions & images --- */
+/* === GLOBAL === */
+body {
+  margin: 0;
+  display: flex;
+  height: 100vh;
+  font-family: Arial, Helvetica, sans-serif;
+  background: #091f36; /* Purple Shadow */
+  color: #f1f1f1;
+}
+
+/* Sidebar */
+#sidebar {
+  width: 240px;
+  background: #0f2862; /* Blue Popsicle */
+  border-right: 2px solid #4f5f76; /* Grey Blue Leaf */
+  padding: 15px;
+  overflow-y: auto;
+  color: #fff;
+}
+
+#sidebar h3 {
+  margin: 0 0 10px;
+  font-size: 16px;
+  font-weight: bold;
+  color: #ffd166;
+}
+
+.online-user {
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  margin: 4px 0;
+  transition: background 0.2s;
+}
+
+.online-user:hover {
+  background: #4f5f76;
+}
+
+.online-user.selected {
+  background: #9e363a; /* Redline */
+  font-weight: bold;
+}
+
+.last-seen {
+  font-size: 11px;
+  color: #bbb;
+  display: block;
+  margin-top: 2px;
+}
+
+#chatAllBtn {
+  width: 100%;
+  padding: 8px;
+  margin-top: 10px;
+  border: none;
+  background: #9e363a;
+  color: #fff;
+  font-weight: bold;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+#chatAllBtn:hover {
+  background: #7c2a2e;
+}
+
+/* Chat container */
+#chatContainer {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #f9f9f9;
+  color: #333;
+}
+
+/* Tabs */
+#tabs {
+  display: flex;
+  background: #4f5f76;
+  border-bottom: 1px solid #333;
+}
+
+.tab {
+  padding: 8px 14px;
+  cursor: pointer;
+  border-right: 1px solid #333;
+  background: #0f2862;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  transition: background 0.2s;
+  color: #fff;
+}
+
+.tab:hover {
+  background: #4f5f76;
+}
+
+.tab.active {
+  background: #fff;
+  font-weight: bold;
+  border-bottom: 3px solid #9e363a;
+  color: #000;
+}
+
+.tab .close-btn {
+  margin-left: 6px;
+  color: #ffd166;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+/* Messages */
+#notesList {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  background: #ececec;
+}
+
+.note-item {
+  margin-bottom: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 14px;
+  display: flex;
+  flex-direction: column;
+  word-wrap: break-word;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.own-message {
+  background-color: #d1ffd1;
+  align-self: flex-end;
+}
+
+.private-message {
+  background-color: #ffe4b3;
+}
+
 .note-item img {
   max-width: 200px;
   border-radius: 8px;
@@ -12,6 +152,21 @@
   display: block;
 }
 
+.note-item button {
+  margin-top: 6px;
+  border: none;
+  background: #9e363a;
+  color: #fff;
+  padding: 4px 8px;
+  font-size: 12px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+.note-item button:hover {
+  background: #7c2a2e;
+}
+
+/* Reactions */
 .reactions {
   margin-top: 4px;
   display: flex;
@@ -23,10 +178,66 @@
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 14px;
-  margin-left: 8px;
-  color: #ffd166;
+  font-size: 16px;
+  margin-top: 6px;
 }
+
+/* Chat bar */
+#chatBar {
+  display: flex;
+  padding: 10px;
+  background: #0f2862;
+  align-items: center;
+  gap: 6px;
+  border-top: 2px solid #4f5f76;
+}
+
+#username {
+  width: 100px;
+  padding: 5px;
+  border-radius: 6px;
+  border: 1px solid #bbb;
+  background: #fafafa;
+  text-align: center;
+  font-size: 12px;
+}
+
+#noteInput {
+  flex: 1;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid #bbb;
+  padding: 0 8px;
+  font-size: 14px;
+}
+
+#sendBtn, #uploadBtn, #logoutBtn {
+  padding: 0 15px;
+  border: none;
+  height: 32px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background 0.2s;
+}
+
+#sendBtn {
+  background: #9e363a;
+  color: #fff;
+}
+#sendBtn:hover { background: #7c2a2e; }
+
+#uploadBtn {
+  background: #4f5f76;
+  color: #fff;
+}
+#uploadBtn:hover { background: #3b445a; }
+
+#logoutBtn {
+  background: #9e363a;
+  color: #fff;
+}
+#logoutBtn:hover { background: #7c2a2e; }
 </style>
 </head>
 <body>
