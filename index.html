@@ -5,21 +5,50 @@
   <title>Kitis's Chatroom</title>
   <style>
     body {
-      margin: 0; padding: 0;
-      display: flex; height: 100vh; font-family: Arial;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      height: 100vh;
+      font-family: Arial;
     }
     #sidebar {
-      width: 200px; background: #eee; padding: 10px; overflow-y: auto;
+      width: 200px;
+      background: #eee;
+      padding: 10px;
+      overflow-y: auto;
     }
     #chatContainer {
-      flex: 1; display: flex; flex-direction: column;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
     }
-    #notesList { flex: 1; overflow-y: auto; padding: 10px; background: #f0f0f0; }
-    .note-item { margin-bottom: 5px; padding: 5px; border-radius: 5px; background: #fff; display: flex; justify-content: space-between; }
-    #chatBar { display: flex; padding: 10px; background: #ccc; align-items: center; gap: 5px; }
+    #notesList {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+      background: #f0f0f0;
+    }
+    .note-item {
+      margin-bottom: 5px;
+      padding: 5px;
+      border-radius: 5px;
+      background: #fff;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    #chatBar {
+      display: flex;
+      padding: 10px;
+      background: #ccc;
+      align-items: center;
+      gap: 5px;
+    }
     #noteInput { flex: 1; height: 30px; border-radius: 5px; padding: 5px; }
+    #username { width: 120px; border-radius: 5px; border: 1px solid #888; padding: 5px; }
     button { border-radius: 5px; border: none; height: 30px; cursor: pointer; }
     #logoutBtn { background-color: #f55; }
+    #chatAllBtn { background-color: #5a5; }
     .online-user { cursor: pointer; margin: 3px 0; }
     .online-user.selected { font-weight: bold; }
   </style>
@@ -29,6 +58,7 @@
   <div id="sidebar">
     <h3>Online Users</h3>
     <div id="onlineUsersList"></div>
+    <button id="chatAllBtn">Chat All</button>
   </div>
 
   <div id="chatContainer">
@@ -43,7 +73,7 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, query, where, orderBy, updateDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, query, orderBy, getDocs, updateDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBXhiyGWev_pgR04Xqwq-09cE_oyrLWnU8",
@@ -69,24 +99,24 @@
 
     // Logout
     document.getElementById("logoutBtn").onclick = async () => {
-      const usersRef = doc(db, "onlineUsers", loggedInUser);
-      await deleteDoc(usersRef);
+      const snapshot = await getDocs(collection(db, "onlineUsers"));
+      snapshot.forEach(async docSnap => {
+        if (docSnap.data().username === loggedInUser) await deleteDoc(doc(db, "onlineUsers", docSnap.id));
+      });
       localStorage.removeItem("loggedInUser");
       window.location.href = "login.html";
     };
 
     // Add self to online users
     async function goOnline() {
-      const usersRef = doc(db, "onlineUsers", loggedInUser);
       await addDoc(collection(db, "onlineUsers"), { username: loggedInUser, lastActive: Date.now() });
     }
-    goOnline(); // initial online entry
+    goOnline();
 
     // Update lastActive periodically
     setInterval(async () => {
-      const usersRef = collection(db, "onlineUsers");
-      const snapshot = await getDocs(usersRef);
-      snapshot.forEach(async (docSnap) => {
+      const snapshot = await getDocs(collection(db, "onlineUsers"));
+      snapshot.forEach(async docSnap => {
         if (docSnap.data().username === loggedInUser) {
           await updateDoc(doc(db, "onlineUsers", docSnap.id), { lastActive: Date.now() });
         }
@@ -102,10 +132,22 @@
         const div = document.createElement("div");
         div.className = "online-user" + (selectedUser === user ? " selected" : "");
         div.textContent = user;
-        div.onclick = () => { selectedUser = user; displayMessages(); };
+        div.onclick = () => { selectedUser = user; highlightSelectedUser(); displayMessages(); };
         onlineUsersList.appendChild(div);
       });
     });
+
+    // Chat All button
+    document.getElementById("chatAllBtn").onclick = () => { selectedUser = "all"; highlightSelectedUser(); displayMessages(); };
+
+    function highlightSelectedUser() {
+      const users = document.querySelectorAll(".online-user");
+      users.forEach(u => u.classList.remove("selected"));
+      if (selectedUser !== "all") {
+        const el = Array.from(users).find(u => u.textContent === selectedUser);
+        if (el) el.classList.add("selected");
+      }
+    }
 
     // Send message
     async function sendMessage() {
@@ -127,24 +169,40 @@
       onSnapshot(q, snapshot => {
         notesList.innerHTML = "";
         const now = Date.now();
-        snapshot.forEach(docSnap => {
-          const data = docSnap.data();
-          // Auto delete after 10 minutes
-          if (now - data.timestamp > 10 * 60 * 1000) { deleteDoc(doc(db, "messages", docSnap.id)); return; }
 
-          // Only show messages public or to/from loggedInUser
+        snapshot.forEach(async docSnap => {
+          const data = docSnap.data();
+
+          // Auto-delete messages older than 10 minutes
+          if (now - data.timestamp > 10 * 60 * 1000) {
+            await deleteDoc(doc(db, "messages", docSnap.id));
+            return;
+          }
+
+          // Show messages public or private to/from loggedInUser
           if (data.to === "all" || data.to === loggedInUser || data.from === loggedInUser) {
             const div = document.createElement("div");
             div.className = "note-item";
             div.textContent = `${data.from} ➤ ${data.to}: ${data.text}`;
+
+            // Delete button for own messages
+            if (data.from === loggedInUser) {
+              const delBtn = document.createElement("button");
+              delBtn.textContent = "Delete";
+              delBtn.onclick = () => deleteDoc(doc(db, "messages", docSnap.id));
+              div.appendChild(delBtn);
+            }
+
             notesList.appendChild(div);
           }
         });
-        notesList.scrollTop = notesList.scrollHeight;
+
+        notesList.scrollTop = notesList.scrollHeight; // autoscroll
       });
     }
 
     displayMessages();
   </script>
+
 </body>
 </html>
