@@ -1,208 +1,203 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Kitis's Chatroom</title>
-  <style>
-    body {
-      margin: 0;
-      padding: 0;
-      display: flex;
-      height: 100vh;
-      font-family: Arial;
-    }
-    #sidebar {
-      width: 200px;
-      background: #eee;
-      padding: 10px;
-      overflow-y: auto;
-    }
-    #chatContainer {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-    }
-    #notesList {
-      flex: 1;
-      overflow-y: auto;
-      padding: 10px;
-      background: #f0f0f0;
-    }
-    .note-item {
-      margin-bottom: 5px;
-      padding: 5px;
-      border-radius: 5px;
-      background: #fff;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    #chatBar {
-      display: flex;
-      padding: 10px;
-      background: #ccc;
-      align-items: center;
-      gap: 5px;
-    }
-    #noteInput { flex: 1; height: 30px; border-radius: 5px; padding: 5px; }
-    #username { width: 120px; border-radius: 5px; border: 1px solid #888; padding: 5px; }
-    button { border-radius: 5px; border: none; height: 30px; cursor: pointer; }
-    #logoutBtn { background-color: #f55; }
-    #chatAllBtn { background-color: #5a5; }
-    .online-user { cursor: pointer; margin: 3px 0; }
-    .online-user.selected { font-weight: bold; }
-  </style>
+<meta charset="UTF-8">
+<title>Kitis Chatroom</title>
+<style>
+  body { margin:0; display:flex; height:100vh; font-family: Arial; }
+  #sidebar { width:200px; background:#eee; padding:10px; overflow-y:auto; }
+  #chatContainer { flex:1; display:flex; flex-direction:column; }
+  #notesList { flex:1; overflow-y:auto; padding:10px; background:#f0f0f0; }
+  .note-item { margin-bottom:5px; padding:5px; border-radius:5px; display:flex; justify-content:space-between; align-items:center; }
+  .own-message { background-color: #d1ffd1; }
+  .private-message { background-color: #ffe4b3; }
+  #chatBar { display:flex; padding:10px; background:#ccc; align-items:center; gap:5px; }
+  #noteInput { flex:1; height:30px; border-radius:5px; padding:5px; }
+  #logoutBtn { background-color:#f55; border:none; height:30px; border-radius:5px; cursor:pointer; }
+  #sendBtn, #chatAllBtn { border:none; height:30px; border-radius:5px; cursor:pointer; background:#5a5; }
+  .online-user { cursor:pointer; margin:3px 0; }
+  .online-user.selected { font-weight:bold; }
+</style>
 </head>
 <body>
 
-  <div id="sidebar">
-    <h3>Online Users</h3>
-    <div id="onlineUsersList"></div>
-    <button id="chatAllBtn">Chat All</button>
+<div id="sidebar">
+  <h3>Online Users</h3>
+  <div id="onlineUsersList"></div>
+  <button id="chatAllBtn">Chat All</button>
+</div>
+
+<div id="chatContainer">
+  <div id="notesList"></div>
+  <div id="chatBar">
+    <input id="username" readonly>
+    <input type="text" id="noteInput" placeholder="Write a message...">
+    <button id="sendBtn">Send</button>
+    <button id="logoutBtn">Logout</button>
   </div>
+</div>
 
-  <div id="chatContainer">
-    <div id="notesList"></div>
-    <div id="chatBar">
-      <input id="username" readonly>
-      <input type="text" id="noteInput" placeholder="Write a message...">
-      <button id="sendBtn">Send</button>
-      <button id="logoutBtn">Logout</button>
-    </div>
-  </div>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, query, orderBy, getDocs, updateDoc, where } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, query, orderBy, getDocs, updateDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+const firebaseConfig = {
+  apiKey: "AIzaSyBXhiyGWev_pgR04Xqwq-09cE_oyrLWnU8",
+  authDomain: "kitisnotebook.firebaseapp.com",
+  projectId: "kitisnotebook",
+  storageBucket: "kitisnotebook.firebasestorage.app",
+  messagingSenderId: "450680847245",
+  appId: "1:450680847245:web:2e4ebb71ccd3a7920bdbc4",
+  measurementId: "G-W3ZVV6N6KK"
+};
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyBXhiyGWev_pgR04Xqwq-09cE_oyrLWnU8",
-      authDomain: "kitisnotebook.firebaseapp.com",
-      projectId: "kitisnotebook",
-      storageBucket: "kitisnotebook.firebasestorage.app",
-      messagingSenderId: "450680847245",
-      appId: "1:450680847245:web:2e4ebb71ccd3a7920bdbc4",
-      measurementId: "G-W3ZVV6N6KK"
-    };
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+// ----------- LOGIN/REGISTER -------------
+const loggedInUserKey = 'loggedInUser';
+let loggedInUser = localStorage.getItem(loggedInUserKey);
 
-    const usernameField = document.getElementById("username");
-    const noteInput = document.getElementById("noteInput");
-    const loggedInUser = localStorage.getItem("loggedInUser");
-    if (!loggedInUser) { window.location.href = "login.html"; } else { usernameField.value = loggedInUser; }
+// Redirect to login page if not logged in
+async function checkLogin() {
+  if (!loggedInUser) {
+    let username = prompt("Enter username:");
+    let password = prompt("Enter password:");
 
-    const onlineUsersList = document.getElementById("onlineUsersList");
-    const notesList = document.getElementById("notesList");
-    let selectedUser = "all"; // default: public
+    const usersRef = collection(db, "users");
+    const snapshot = await getDocs(query(usersRef, where("username","==",username)));
 
-    // Logout
-    document.getElementById("logoutBtn").onclick = async () => {
-      const snapshot = await getDocs(collection(db, "onlineUsers"));
-      snapshot.forEach(async docSnap => {
-        if (docSnap.data().username === loggedInUser) await deleteDoc(doc(db, "onlineUsers", docSnap.id));
-      });
-      localStorage.removeItem("loggedInUser");
-      window.location.href = "login.html";
-    };
-
-    // Add self to online users
-    async function goOnline() {
-      await addDoc(collection(db, "onlineUsers"), { username: loggedInUser, lastActive: Date.now() });
-    }
-    goOnline();
-
-    // Update lastActive periodically
-    setInterval(async () => {
-      const snapshot = await getDocs(collection(db, "onlineUsers"));
-      snapshot.forEach(async docSnap => {
-        if (docSnap.data().username === loggedInUser) {
-          await updateDoc(doc(db, "onlineUsers", docSnap.id), { lastActive: Date.now() });
-        }
-      });
-    }, 30000);
-
-    // Display online users
-    onSnapshot(collection(db, "onlineUsers"), snapshot => {
-      onlineUsersList.innerHTML = "";
+    if (snapshot.empty) {
+      // Register new user
+      await addDoc(usersRef, { username, password });
+      loggedInUser = username;
+      localStorage.setItem(loggedInUserKey, username);
+    } else {
+      let valid = false;
       snapshot.forEach(docSnap => {
-        const user = docSnap.data().username;
-        if (user === loggedInUser) return;
-        const div = document.createElement("div");
-        div.className = "online-user" + (selectedUser === user ? " selected" : "");
-        div.textContent = user;
-        div.onclick = () => { selectedUser = user; highlightSelectedUser(); displayMessages(); };
-        onlineUsersList.appendChild(div);
+        const data = docSnap.data();
+        if (data.password === password) valid = true;
       });
-    });
-
-    // Chat All button
-    document.getElementById("chatAllBtn").onclick = () => { selectedUser = "all"; highlightSelectedUser(); displayMessages(); };
-
-    function highlightSelectedUser() {
-      const users = document.querySelectorAll(".online-user");
-      users.forEach(u => u.classList.remove("selected"));
-      if (selectedUser !== "all") {
-        const el = Array.from(users).find(u => u.textContent === selectedUser);
-        if (el) el.classList.add("selected");
+      if (!valid) {
+        alert("Invalid password. Refresh to try again.");
+        throw "Login failed";
       }
+      loggedInUser = username;
+      localStorage.setItem(loggedInUserKey, username);
     }
+  }
+  document.getElementById("username").value = loggedInUser;
+}
 
-    // Send message
-    async function sendMessage() {
-      const text = noteInput.value.trim();
-      if (!text) return;
-      await addDoc(collection(db, "messages"), { text, from: loggedInUser, to: selectedUser, timestamp: Date.now() });
-      noteInput.value = "";
+await checkLogin();
+
+// ----------- ONLINE USERS -------------
+const onlineUsersList = document.getElementById("onlineUsersList");
+let selectedUser = "all";
+
+// Go online
+async function goOnline() {
+  await addDoc(collection(db, "onlineUsers"), { username: loggedInUser, lastActive: Date.now() });
+}
+goOnline();
+
+// Update lastActive periodically
+setInterval(async () => {
+  const snapshot = await getDocs(collection(db, "onlineUsers"));
+  snapshot.forEach(async docSnap => {
+    if (docSnap.data().username === loggedInUser) {
+      await updateDoc(doc(db, "onlineUsers", docSnap.id), { lastActive: Date.now() });
     }
+  });
+}, 30000);
 
-    noteInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") { e.preventDefault(); sendMessage(); }
+// Display online users
+onSnapshot(collection(db, "onlineUsers"), snapshot => {
+  onlineUsersList.innerHTML = "";
+  snapshot.forEach(docSnap => {
+    const user = docSnap.data().username;
+    if (user === loggedInUser) return;
+    const div = document.createElement("div");
+    div.className = "online-user" + (selectedUser===user?" selected":"");
+    div.textContent = user;
+    div.onclick = () => { selectedUser = user; highlightSelectedUser(); displayMessages(); };
+    onlineUsersList.appendChild(div);
+  });
+});
+
+function highlightSelectedUser() {
+  const users = document.querySelectorAll(".online-user");
+  users.forEach(u=>u.classList.remove("selected"));
+  if (selectedUser!=="all") {
+    const el = Array.from(users).find(u=>u.textContent===selectedUser);
+    if(el) el.classList.add("selected");
+  }
+}
+
+// Chat All button
+document.getElementById("chatAllBtn").onclick = () => { selectedUser="all"; highlightSelectedUser(); displayMessages(); };
+
+// ----------- MESSAGES -------------
+const notesList = document.getElementById("notesList");
+
+async function sendMessage() {
+  const text = document.getElementById("noteInput").value.trim();
+  if (!text) return;
+  await addDoc(collection(db, "messages"), { text, from: loggedInUser, to: selectedUser, timestamp: Date.now() });
+  document.getElementById("noteInput").value="";
+}
+
+document.getElementById("sendBtn").onclick = sendMessage;
+
+document.getElementById("noteInput").addEventListener("keydown", e=>{
+  if(e.key==="Enter"){ e.preventDefault(); sendMessage(); }
+});
+
+// Display messages
+function displayMessages() {
+  const q = query(collection(db,"messages"),orderBy("timestamp"));
+  onSnapshot(q, snapshot=>{
+    notesList.innerHTML="";
+    const now = Date.now();
+    snapshot.forEach(async docSnap=>{
+      const data = docSnap.data();
+      // Auto delete 10min
+      if(now-data.timestamp>10*60*1000){ await deleteDoc(doc(db,"messages",docSnap.id)); return; }
+
+      if(data.to==="all" || data.to===loggedInUser || data.from===loggedInUser){
+        const div = document.createElement("div");
+        div.className="note-item";
+        div.textContent = `${data.from} ➤ ${data.to}: ${data.text}`;
+
+        // Highlight own messages
+        if(data.from===loggedInUser) div.classList.add("own-message");
+        else if(data.to===loggedInUser && data.to!=="all") div.classList.add("private-message");
+
+        // Delete button for own messages
+        if(data.from===loggedInUser){
+          const delBtn=document.createElement("button");
+          delBtn.textContent="Delete";
+          delBtn.onclick=()=>deleteDoc(doc(db,"messages",docSnap.id));
+          div.appendChild(delBtn);
+        }
+
+        notesList.appendChild(div);
+      }
     });
+    notesList.scrollTop = notesList.scrollHeight;
+  });
+}
 
-    document.getElementById("sendBtn").onclick = sendMessage;
+displayMessages();
 
-    // Display messages (public + private)
-    function displayMessages() {
-      const q = query(collection(db, "messages"), orderBy("timestamp"));
-      onSnapshot(q, snapshot => {
-        notesList.innerHTML = "";
-        const now = Date.now();
+// Logout
+document.getElementById("logoutBtn").onclick = async ()=>{
+  const snapshot = await getDocs(collection(db,"onlineUsers"));
+  snapshot.forEach(async docSnap=>{ if(docSnap.data().username===loggedInUser) await deleteDoc(doc(db,"onlineUsers",docSnap.id)); });
+  localStorage.removeItem(loggedInUserKey);
+  window.location.href="login.html";
+};
 
-        snapshot.forEach(async docSnap => {
-          const data = docSnap.data();
-
-          // Auto-delete messages older than 10 minutes
-          if (now - data.timestamp > 10 * 60 * 1000) {
-            await deleteDoc(doc(db, "messages", docSnap.id));
-            return;
-          }
-
-          // Show messages public or private to/from loggedInUser
-          if (data.to === "all" || data.to === loggedInUser || data.from === loggedInUser) {
-            const div = document.createElement("div");
-            div.className = "note-item";
-            div.textContent = `${data.from} ➤ ${data.to}: ${data.text}`;
-
-            // Delete button for own messages
-            if (data.from === loggedInUser) {
-              const delBtn = document.createElement("button");
-              delBtn.textContent = "Delete";
-              delBtn.onclick = () => deleteDoc(doc(db, "messages", docSnap.id));
-              div.appendChild(delBtn);
-            }
-
-            notesList.appendChild(div);
-          }
-        });
-
-        notesList.scrollTop = notesList.scrollHeight; // autoscroll
-      });
-    }
-
-    displayMessages();
-  </script>
-
+</script>
 </body>
 </html>
