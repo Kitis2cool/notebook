@@ -267,6 +267,8 @@ body {
   <h3>Online Users</h3>
   <div id="onlineUsersList"></div>
   <button id="chatAllBtn">Chat All</button>
+  <input type="color" id="bgSelector" onchange="changeBackground()">
+
 </div>
 
 <div id="chatContainer">
@@ -299,6 +301,8 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+
+
 
 // ----------- ADMIN SETTINGS -------------
 const ADMIN_USER = "kitis"; // 👈 change this to your username
@@ -492,8 +496,22 @@ document.getElementById("logoutBtn").onclick = async ()=>{
   localStorage.removeItem("loggedInUser");
   window.location.href="login.html";
 };
+
+
+</script>
+<script>
+
+function changeBackground() {
+  console.log("running");
+  var notesList2 = document.getElementById("notesList");
+  var backgroundColorVAR = document.getElementById("bgSelector");
+  var backgroundColorVARValue = backgroundColorVAR.value;
+
+  notesList2.style.backgroundColor = backgroundColorVARValue;
+}
+
+
 </script>
 </body>
 </html>
-
 
