@@ -7,6 +7,10 @@
   body { margin:0; display:flex; height:100vh; font-family: Arial; }
   #sidebar { width:220px; background:#eee; padding:10px; overflow-y:auto; }
   #chatContainer { flex:1; display:flex; flex-direction:column; }
+  #tabs { display:flex; background:#ddd; border-bottom:1px solid #bbb; }
+  .tab { padding:8px 12px; cursor:pointer; border-right:1px solid #bbb; }
+  .tab.active { background:#fff; font-weight:bold; }
+  .tab .close-btn { margin-left:5px; color:red; cursor:pointer; font-size:12px; }
   #notesList { flex:1; overflow-y:auto; padding:10px; background:#f0f0f0; }
   .note-item { margin-bottom:5px; padding:5px; border-radius:5px; display:flex; justify-content:space-between; align-items:center; }
   .own-message { background-color: #d1ffd1; }
@@ -29,6 +33,7 @@
 </div>
 
 <div id="chatContainer">
+  <div id="tabs"></div> <!-- Tabs -->
   <div id="notesList"></div>
   <div id="chatBar">
     <input id="username" readonly>
@@ -67,7 +72,6 @@ document.getElementById("username").value = loggedInUser;
 
 // ----------- ONLINE USERS -------------
 const onlineUsersList = document.getElementById("onlineUsersList");
-let selectedUser = "all";
 
 async function goOnline() {
   const userRef = doc(db, "onlineUsers", loggedInUser); 
@@ -114,8 +118,7 @@ onSnapshot(collection(db, "onlineUsers"), snapshot => {
 
   sortedUsers.forEach(({ user, lastActive }) => {
     const div = document.createElement("div");
-    div.className = "online-user" + (selectedUser===user?" selected":"");
-
+    div.className = "online-user";
     if (now - lastActive <= 60 * 1000) {
       div.textContent = user + " (online)";
     } else {
@@ -125,22 +128,53 @@ onSnapshot(collection(db, "onlineUsers"), snapshot => {
       span.textContent = `(last seen ${formatLastSeen(now - lastActive)})`;
       div.appendChild(span);
     }
-
-    div.onclick = () => { selectedUser = user; highlightSelectedUser(); displayMessages(); };
+    div.onclick = () => { openTab(user); };
     onlineUsersList.appendChild(div);
   });
 });
 
-function highlightSelectedUser() {
-  const users = document.querySelectorAll(".online-user");
-  users.forEach(u=>u.classList.remove("selected"));
-  if (selectedUser!=="all") {
-    const el = Array.from(users).find(u=>u.textContent.includes(selectedUser));
-    if(el) el.classList.add("selected");
+// ----------- TABS SYSTEM -------------
+const tabsContainer = document.getElementById("tabs");
+let openTabs = {}; // { username: tabElement }
+let activeTab = "all"; 
+
+function openTab(user) {
+  if (!openTabs[user]) {
+    const tab = document.createElement("div");
+    tab.className = "tab" + (user===activeTab ? " active" : "");
+    tab.textContent = user==="all" ? "All Chat" : user;
+
+    if (user !== "all") {
+      const closeBtn = document.createElement("span");
+      closeBtn.textContent = "✖";
+      closeBtn.className = "close-btn";
+      closeBtn.onclick = (e) => {
+        e.stopPropagation();
+        tabsContainer.removeChild(tab);
+        delete openTabs[user];
+        if (activeTab === user) { activeTab = "all"; highlightActiveTab(); displayMessages(); }
+      };
+      tab.appendChild(closeBtn);
+    }
+
+    tab.onclick = () => {
+      activeTab = user;
+      highlightActiveTab();
+      displayMessages();
+    };
+
+    openTabs[user] = tab;
+    tabsContainer.appendChild(tab);
   }
+  activeTab = user;
+  highlightActiveTab();
+  displayMessages();
 }
 
-document.getElementById("chatAllBtn").onclick = () => { selectedUser="all"; highlightSelectedUser(); displayMessages(); };
+function highlightActiveTab() {
+  Object.values(openTabs).forEach(tab => tab.classList.remove("active"));
+  if (openTabs[activeTab]) openTabs[activeTab].classList.add("active");
+}
 
 // ----------- MESSAGES -------------
 const notesList = document.getElementById("notesList");
@@ -148,7 +182,9 @@ const notesList = document.getElementById("notesList");
 async function sendMessage() {
   const text = document.getElementById("noteInput").value.trim();
   if (!text) return;
-  await addDoc(collection(db, "messages"), { text, from: loggedInUser, to: selectedUser, timestamp: Date.now() });
+  await addDoc(collection(db, "messages"), { 
+    text, from: loggedInUser, to: activeTab, timestamp: Date.now() 
+  });
   document.getElementById("noteInput").value="";
 }
 
@@ -167,30 +203,41 @@ function displayMessages() {
       const data = docSnap.data();
       if(now-data.timestamp>10*60*1000){ await deleteDoc(doc(db,"messages",docSnap.id)); return; }
 
-      if(data.to==="all" || data.to===loggedInUser || data.from===loggedInUser){
-        const div = document.createElement("div");
-        div.className="note-item";
-        div.textContent = `${data.from} ➤ ${data.to}: ${data.text}`;
-
-        if(data.from===loggedInUser) div.classList.add("own-message");
-        else if(data.to===loggedInUser && data.to!=="all") div.classList.add("private-message");
-
-        if(data.from===loggedInUser){
-          const delBtn=document.createElement("button");
-          delBtn.textContent="Delete";
-          delBtn.onclick=()=>deleteDoc(doc(db,"messages",docSnap.id));
-          div.appendChild(delBtn);
+      if (activeTab==="all") {
+        if (data.to==="all" || data.from===loggedInUser) renderMessage(docSnap,data);
+      } else {
+        if ((data.from===activeTab && data.to===loggedInUser) ||
+            (data.to===activeTab && data.from===loggedInUser)) {
+          renderMessage(docSnap,data);
         }
-
-        notesList.appendChild(div);
       }
     });
     notesList.scrollTop = notesList.scrollHeight;
   });
 }
-displayMessages();
 
-// Logout
+function renderMessage(docSnap,data){
+  const div = document.createElement("div");
+  div.className="note-item";
+  div.textContent = `${data.from} ➤ ${data.to}: ${data.text}`;
+
+  if(data.from===loggedInUser) div.classList.add("own-message");
+  else if(data.to===loggedInUser && data.to!=="all") div.classList.add("private-message");
+
+  if(data.from===loggedInUser){
+    const delBtn=document.createElement("button");
+    delBtn.textContent="Delete";
+    delBtn.onclick=()=>deleteDoc(doc(db,"messages",docSnap.id));
+    div.appendChild(delBtn);
+  }
+  notesList.appendChild(div);
+}
+
+// ----------- INIT -------------
+document.getElementById("chatAllBtn").onclick = () => openTab("all");
+openTab("all"); // default tab
+
+// ----------- LOGOUT -------------
 document.getElementById("logoutBtn").onclick = async ()=>{
   await deleteDoc(doc(db,"onlineUsers",loggedInUser));
   localStorage.removeItem("loggedInUser");
