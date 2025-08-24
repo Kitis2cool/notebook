@@ -1,42 +1,98 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <title>Login - Kitchatty</title>
     <style>
         body {
-            background-color: #091f36;
-            font-family: Arial, sans-serif;
-            text-align: center;
-            margin-top: 100px;
-        }
-        input {
-            width: 200px;
-            height: 25px;
-            border: none;
-            border-radius: 8px;
-            font-size: medium;
-            padding: 5px;
-        }
-        button {
-            height: 30px;
-            width: 80px;
-            border: none;
-            border-radius: 8px;
-            background-color: rgb(84, 245, 145);
-            margin: 5px;
-            cursor: pointer;
-        }
+    background: linear-gradient(135deg, #091f36, #0d284d);
+    background-image: url("434975.webp");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-position: center;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: #fff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+}
+
+.inputFields {
+    background: rgba(58, 57, 58, 0.438);
+    padding: 40px;
+    border-radius: 16px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+    width: 320px;
+    text-align: center;
+    backdrop-filter: blur(10px);
+    
+}
+
+h1 {
+    margin-bottom: 25px;
+    font-size: 28px;
+    color: #54f591;
+    letter-spacing: 1px;
+}
+
+input {
+    width: 90%;
+    height: 40px;
+    margin: 10px 0;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    padding: 0 12px;
+    outline: none;
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    transition: 0.3s;
+}
+
+input:focus {
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid #54f591;
+}
+
+button {
+    height: 40px;
+    width: 120px;
+    border: none;
+    border-radius: 10px;
+    background: #20ff58;
+    color: #091f36;
+    font-size: 16px;
+    font-weight: bold;
+    margin: 10px 5px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+button:hover {
+    background: #42d57a;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(84, 245, 145, 0.4);
+}
+
+button:active {
+    transform: scale(0.95);
+}
+
     </style>
 </head>
 
 <body>
-    <h1 style="color:white;">Login Page</h1>
+    <div class="inputFields">
+        <h1 style="color:white;">Login</h1>
 
-    <input type="text" id="usernameField" placeholder="Username"><br><br>
-    <input type="password" id="passwordField" placeholder="Password"><br><br>
+        <input type="text" id="usernameField" placeholder="Username"><br><br>
+        <input type="password" id="passwordField" placeholder="Password"><br><br>
 
-    <button id="loginBtn">Login</button>
-    <button id="signupBtn">Sign Up</button>
-
+        <button id="loginBtn">Login</button>
+        <button id="signupBtn">Sign Up</button>
+    </div>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
         import { 
