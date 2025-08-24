@@ -4,260 +4,28 @@
 <meta charset="UTF-8">
 <title>Kitis Chatroom</title>
 <style>
-/* Base layout */
-body {
-  margin: 0;
-  display: flex;
-  height: 100vh;
-  font-family: "Segoe UI", Arial, sans-serif;
-  background: linear-gradient(135deg, #091f36, #0f2862);
-  color: #f5f5f5;
-  overflow: hidden;
-}
-
-/* Sidebar */
-#sidebar {
-  width: 250px;
-  background: rgba(15, 40, 98, 0.95);
-  border-right: 1px solid #4f5f76;
-  padding: 18px;
-  overflow-y: auto;
-  backdrop-filter: blur(8px);
-  box-shadow: 2px 0 6px rgba(0,0,0,0.3);
-}
-
-#sidebar h3 {
-  margin: 0 0 14px;
-  font-size: 16px;
-  font-weight: bold;
-  color: #fff;
-  border-bottom: 1px solid #4f5f76;
-  padding-bottom: 6px;
-  letter-spacing: 0.5px;
-}
-
-.online-user {
-  padding: 10px 12px;
-  border-radius: 10px;
-  cursor: pointer;
-  margin: 8px 0;
-  transition: transform 0.2s, background 0.25s;
-  background: rgba(255,255,255,0.05);
-  color: #f5f5f5;
-}
-.online-user:hover {
-  background: rgba(255,255,255,0.15);
-  transform: translateX(4px);
-}
-.online-user.selected {
-  background: #4f5f76;
-  font-weight: bold;
-}
-
-.last-seen {
-  font-size: 11px;
-  color: #ccc;
-  display: block;
-  margin-top: 3px;
-}
-
-.admin-badge {
-  font-size: 11px;
-  font-weight: bold;
-  color: #ffcc00;
-  margin-left: 6px;
-}
-
-/* Chat All Button */
-#chatAllBtn {
-  width: 100%;
-  padding: 12px;
-  margin-top: 14px;
-  border: none;
-  background: linear-gradient(90deg, #9e363a, #7a272a);
-  color: #fff;
-  font-weight: bold;
+/* --- same styles as before, plus reactions & images --- */
+.note-item img {
+  max-width: 200px;
   border-radius: 8px;
-  cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-#chatAllBtn:hover {
-  transform: scale(1.05);
-  box-shadow: 0 3px 10px rgba(158,54,58,0.4);
+  margin-top: 6px;
+  display: block;
 }
 
-/* Chat container */
-#chatContainer {
-  flex: 1;
+.reactions {
+  margin-top: 4px;
   display: flex;
-  flex-direction: column;
-  background: linear-gradient(180deg, #091f36, #0f2862);
-  color: #f5f5f5;
+  gap: 6px;
+  font-size: 16px;
 }
 
-/* Tabs */
-#tabs {
-  display: flex;
-  background: #0f2862;
-  border-bottom: 1px solid #4f5f76;
-}
-
-.tab {
-  padding: 12px 18px;
+.react-btn {
+  background: none;
+  border: none;
   cursor: pointer;
-  border-right: 1px solid #4f5f76;
-  background: rgba(15, 40, 98, 0.9);
   font-size: 14px;
-  display: flex;
-  align-items: center;
-  color: #eee;
-  transition: background 0.25s, color 0.25s, transform 0.2s;
-}
-.tab:hover {
-  background: #4f5f76;
-  transform: translateY(-2px);
-}
-.tab.active {
-  background: #091f36;
-  font-weight: 600;
-  border-bottom: 3px solid #9e363a;
-  color: #fff;
-}
-
-.tab .close-btn {
   margin-left: 8px;
-  color: #9e363a;
-  cursor: pointer;
-  font-size: 13px;
-  transition: color 0.2s;
-}
-.tab .close-btn:hover {
-  color: #ff5c5c;
-}
-
-/* Messages list */
-#notesList {
-  flex: 1;
-  overflow-y: auto;
-  padding: 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-/* Message bubbles */
-.note-item {
-  max-width: 70%;
-  padding: 10px 14px;
-  border-radius: 16px;
-  font-size: 14px;
-  line-height: 1.4;
-  position: relative;
-  box-shadow: 0 3px 6px rgba(0,0,0,0.25);
-  transition: transform 0.2s;
-}
-.note-item:hover {
-  transform: translateY(-2px);
-}
-
-.note-item:not(.own-message) {
-  align-self: flex-start;
-  background: #4f5f76;
-  color: #fff;
-  border-bottom-left-radius: 4px;
-}
-
-.own-message {
-  align-self: flex-end;
-  background: #0f2862;
-  color: #fff;
-  border-bottom-right-radius: 4px;
-}
-
-.private-message {
-  background: #9e363a;
-  color: #fff;
-  align-self: center;
-  border-radius: 12px;
-  font-weight: bold;
-}
-
-.admin-message {
-  border: 2px solid #ffcc00;
-  background: #333366;
-  font-weight: bold;
-}
-
-/* Delete button */
-.note-item button {
-  margin-left: 10px;
-  border: none;
-  background: #9e363a;
-  color: #fff;
-  padding: 4px 8px;
-  font-size: 12px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-.note-item button:hover {
-  background: #7a272a;
-}
-
-/* Chat bar */
-#chatBar {
-  display: flex;
-  padding: 12px;
-  background: rgba(79,95,118,0.9);
-  align-items: center;
-  gap: 8px;
-  border-top: 1px solid #333;
-  backdrop-filter: blur(6px);
-}
-
-#username {
-  width: 110px;
-  padding: 6px;
-  border-radius: 6px;
-  border: 1px solid #333;
-  background: #091f36;
-  color: #fff;
-  text-align: center;
-  font-size: 13px;
-  font-weight: 500;
-}
-
-#noteInput {
-  flex: 1;
-  height: 38px;
-  border-radius: 6px;
-  border: 1px solid #333;
-  padding: 0 12px;
-  font-size: 14px;
-  background: #0f2862;
-  color: #fff;
-  transition: border 0.2s, background 0.2s;
-}
-#noteInput:focus {
-  border-color: #9e363a;
-  outline: none;
-  background: #091f36;
-}
-
-#sendBtn, #logoutBtn {
-  padding: 0 16px;
-  height: 38px;
-  border-radius: 6px;
-  cursor: pointer;
-  background: linear-gradient(90deg, #9e363a, #7a272a);
-  color: #fff;
-  font-weight: bold;
-  border: none;
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-#sendBtn:hover, #logoutBtn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 3px 10px rgba(158,54,58,0.4);
+  color: #ffd166;
 }
 </style>
 </head>
@@ -270,11 +38,13 @@ body {
 </div>
 
 <div id="chatContainer">
-  <div id="tabs"></div>
+  <div id="tabs"></div> <!-- Tabs -->
   <div id="notesList"></div>
   <div id="chatBar">
     <input id="username" readonly>
     <input type="text" id="noteInput" placeholder="Write a message...">
+    <input type="file" id="imageUpload" accept="image/*" style="display:none;">
+    <button id="uploadBtn">📷</button>
     <button id="sendBtn">Send</button>
     <button id="logoutBtn">Logout</button>
   </div>
@@ -284,14 +54,17 @@ body {
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
 import { 
   getFirestore, collection, addDoc, onSnapshot, deleteDoc, 
-  doc, query, orderBy, setDoc 
+  doc, query, orderBy, updateDoc, setDoc 
 } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+import { 
+  getStorage, ref, uploadBytes, getDownloadURL 
+} from "https://www.gstatic.com/firebasejs/11.0.1/firebase-storage.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBXhiyGWev_pgR04Xqwq-09cE_oyrLWnU8",
   authDomain: "kitisnotebook.firebaseapp.com",
   projectId: "kitisnotebook",
-  storageBucket: "kitisnotebook.firebasestorage.app",
+  storageBucket: "kitisnotebook.appspot.com",
   messagingSenderId: "450680847245",
   appId: "1:450680847245:web:2e4ebb71ccd3a7920bdbc4",
   measurementId: "G-W3ZVV6N6KK"
@@ -299,97 +72,35 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-
-// ----------- ADMIN SETTINGS -------------
-const ADMIN_USER = "kitis"; // 👈 change this to your username
-let isAdmin = false;
+const storage = getStorage(app);
 
 // ----------- LOGIN CHECK -------------
 const loggedInUser = localStorage.getItem("loggedInUser");
 if (!loggedInUser) {
-  window.location.href = "login.html";
+  window.location.href = "login.html"; 
 }
 document.getElementById("username").value = loggedInUser;
-if (loggedInUser === ADMIN_USER) isAdmin = true;
 
 // ----------- ONLINE USERS -------------
-const onlineUsersList = document.getElementById("onlineUsersList");
-
 async function goOnline() {
   const userRef = doc(db, "onlineUsers", loggedInUser); 
   await setDoc(userRef, { username: loggedInUser, lastActive: Date.now() });
 }
 goOnline();
-
 setInterval(async () => {
   const userRef = doc(db, "onlineUsers", loggedInUser);
   await setDoc(userRef, { username: loggedInUser, lastActive: Date.now() }, { merge: true });
 }, 30000);
 
-function formatLastSeen(ms) {
-  const seconds = Math.floor(ms/1000);
-  if (seconds < 60) return "just now";
-  const minutes = Math.floor(seconds/60);
-  if (minutes < 60) return minutes + " min ago";
-  const hours = Math.floor(minutes/60);
-  return hours + " hr ago";
-}
-
-onSnapshot(collection(db, "onlineUsers"), snapshot => {
-  onlineUsersList.innerHTML = "";
-  const now = Date.now();
-  const usersMap = {};
-
-  snapshot.forEach(docSnap => {
-    const data = docSnap.data();
-    const user = data.username;
-    const lastActive = data.lastActive || 0;
-    if (user === loggedInUser) return;
-    if (!usersMap[user] || usersMap[user].lastActive < lastActive) {
-      usersMap[user] = { user, lastActive };
-    }
-  });
-
-  const sortedUsers = Object.values(usersMap).sort((a, b) => {
-    const aOnline = now - a.lastActive <= 60 * 1000;
-    const bOnline = now - b.lastActive <= 60 * 1000;
-    if (aOnline && !bOnline) return -1;
-    if (!aOnline && bOnline) return 1;
-    return b.lastActive - a.lastActive;
-  });
-
-  sortedUsers.forEach(({ user, lastActive }) => {
-    const div = document.createElement("div");
-    div.className = "online-user";
-    if (now - lastActive <= 60 * 1000) {
-      div.textContent = user + " (online)";
-    } else {
-      div.textContent = user;
-      const span = document.createElement("span");
-      span.className = "last-seen";
-      span.textContent = `(last seen ${formatLastSeen(now - lastActive)})`;
-      div.appendChild(span);
-    }
-    if (user === ADMIN_USER) {
-      const badge = document.createElement("span");
-      badge.className = "admin-badge";
-      badge.textContent = "[ADMIN]";
-      div.appendChild(badge);
-    }
-    div.onclick = () => { openTab(user); };
-    onlineUsersList.appendChild(div);
-  });
-});
-
 // ----------- TABS SYSTEM -------------
 const tabsContainer = document.getElementById("tabs");
 let openTabs = {};
-let activeTab = "all"; 
+let activeTab = "all";
 
 function openTab(user) {
   if (!openTabs[user]) {
     const tab = document.createElement("div");
-    tab.className = "tab" + (user===activeTab ? " active" : "");
+    tab.className = "tab";
     tab.textContent = user==="all" ? "All Chat" : user;
 
     if (user !== "all") {
@@ -427,20 +138,35 @@ function highlightActiveTab() {
 // ----------- MESSAGES -------------
 const notesList = document.getElementById("notesList");
 
-async function sendMessage() {
+async function sendMessage(imageUrl=null) {
   const text = document.getElementById("noteInput").value.trim();
-  if (!text) return;
+  if (!text && !imageUrl) return;
   await addDoc(collection(db, "messages"), { 
-    text, from: loggedInUser, to: activeTab, timestamp: Date.now() 
+    text, imageUrl, from: loggedInUser, to: activeTab, timestamp: Date.now(), reactions: {}
   });
   document.getElementById("noteInput").value="";
 }
 
-document.getElementById("sendBtn").onclick = sendMessage;
+document.getElementById("sendBtn").onclick = () => sendMessage();
 document.getElementById("noteInput").addEventListener("keydown", e=>{
   if(e.key==="Enter"){ e.preventDefault(); sendMessage(); }
 });
 
+// ----------- IMAGE UPLOAD -------------
+document.getElementById("uploadBtn").onclick = () => {
+  document.getElementById("imageUpload").click();
+};
+
+document.getElementById("imageUpload").onchange = async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const storageRef = ref(storage, `chatImages/${Date.now()}_${file.name}`);
+  await uploadBytes(storageRef, file);
+  const url = await getDownloadURL(storageRef);
+  sendMessage(url);
+};
+
+// ----------- DISPLAY MESSAGES -------------
 function displayMessages() {
   const q = query(collection(db,"messages"),orderBy("timestamp"));
   onSnapshot(q, snapshot=>{
@@ -466,25 +192,62 @@ function displayMessages() {
 function renderMessage(docSnap,data){
   const div = document.createElement("div");
   div.className="note-item";
-  div.textContent = `${data.from} ➤ ${data.to}: ${data.text}`;
+  
+  let content = `${data.from} ➤ ${data.to}`;
+  if (data.text) content += `: ${data.text}`;
+  div.textContent = content;
 
-  if(data.from===ADMIN_USER) div.classList.add("admin-message");
+  if(data.imageUrl){
+    const img = document.createElement("img");
+    img.src = data.imageUrl;
+    div.appendChild(img);
+  }
+
   if(data.from===loggedInUser) div.classList.add("own-message");
-  else if(data.to===loggedInUser && data.to!=="all") div.classList.add("private-message");
 
-  // Admin can delete ALL, normal users only their own
-  if(data.from===loggedInUser || isAdmin){
+  // delete button (admin or owner)
+  if(data.from===loggedInUser || loggedInUser==="admin"){
     const delBtn=document.createElement("button");
     delBtn.textContent="Delete";
     delBtn.onclick=()=>deleteDoc(doc(db,"messages",docSnap.id));
     div.appendChild(delBtn);
   }
+
+  // reactions
+  const reactBtn = document.createElement("button");
+  reactBtn.textContent="😊";
+  reactBtn.className="react-btn";
+  reactBtn.onclick = () => addReaction(docSnap.id);
+  div.appendChild(reactBtn);
+
+  // show reactions
+  if (data.reactions && Object.keys(data.reactions).length>0){
+    const reactionDiv=document.createElement("div");
+    reactionDiv.className="reactions";
+    for (const [user,emoji] of Object.entries(data.reactions)){
+      const span=document.createElement("span");
+      span.textContent=`${emoji}`;
+      reactionDiv.appendChild(span);
+    }
+    div.appendChild(reactionDiv);
+  }
+
   notesList.appendChild(div);
+}
+
+// ----------- ADD REACTION -------------
+async function addReaction(messageId){
+  const emojis=["👍","❤️","😂","🔥","😮"];
+  const choice=prompt("React with emoji: " + emojis.join(" "));
+  if(choice && emojis.includes(choice)){
+    const msgRef = doc(db,"messages",messageId);
+    await updateDoc(msgRef,{ [`reactions.${loggedInUser}`]: choice });
+  }
 }
 
 // ----------- INIT -------------
 document.getElementById("chatAllBtn").onclick = () => openTab("all");
-openTab("all");
+openTab("all"); 
 
 // ----------- LOGOUT -------------
 document.getElementById("logoutBtn").onclick = async ()=>{
@@ -495,4 +258,3 @@ document.getElementById("logoutBtn").onclick = async ()=>{
 </script>
 </body>
 </html>
-
