@@ -4,104 +4,147 @@
     <title>Login - Kitchatty</title>
     <style>
         body {
-    background: linear-gradient(135deg, #091f36, #0d284d);
-    background-image: url("434975.webp");
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    background-position: center;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    color: #fff;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    margin: 0;
-}
+            background: linear-gradient(135deg, #091f36, #0d284d);
+            background-image: url("434975.webp");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
 
-.inputFields {
-    background: rgba(58, 57, 58, 0.438);
-    padding: 40px;
-    border-radius: 16px;
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
-    width: 320px;
-    text-align: center;
-    backdrop-filter: blur(10px);
-    
-}
+        .inputFields {
+            background: rgba(58, 57, 58, 0.6);
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+            width: 320px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            animation: fadeIn 0.8s ease-in-out;
+        }
 
-h1 {
-    margin-bottom: 25px;
-    font-size: 28px;
-    color: #54f591;
-    letter-spacing: 1px;
-}
+        h1 {
+            margin-bottom: 25px;
+            font-size: 28px;
+            color: #54f591;
+            letter-spacing: 1px;
+        }
 
-input {
-    width: 90%;
-    height: 40px;
-    margin: 10px 0;
-    border: none;
-    border-radius: 8px;
-    font-size: 16px;
-    padding: 0 12px;
-    outline: none;
-    background: rgba(255, 255, 255, 0.1);
-    color: #fff;
-    transition: 0.3s;
-}
+        input {
+            width: 90%;
+            height: 40px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            padding: 0 12px;
+            outline: none;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            transition: 0.3s;
+        }
 
-input:focus {
-    background: rgba(255, 255, 255, 0.2);
-    border: 1px solid #54f591;
-}
+        input:focus {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid #54f591;
+        }
 
-button {
-    height: 40px;
-    width: 120px;
-    border: none;
-    border-radius: 10px;
-    background: #20ff58;
-    color: #091f36;
-    font-size: 16px;
-    font-weight: bold;
-    margin: 10px 5px;
-    cursor: pointer;
-    transition: 0.3s;
-}
+        .password-wrapper {
+            position: relative;
+            width: 90%;
+            margin: auto;
+        }
 
-button:hover {
-    background: #42d57a;
-    transform: translateY(-2px);
-    box-shadow: 0 6px 15px rgba(84, 245, 145, 0.4);
-}
+        .togglePassword {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            font-size: 18px;
+            color: #ccc;
+        }
 
-button:active {
-    transform: scale(0.95);
-}
+        .strength {
+            font-size: 14px;
+            margin-top: 5px;
+            font-weight: bold;
+        }
 
+        .strength.weak { color: #ff6b6b; }
+        .strength.medium { color: #f1c40f; }
+        .strength.strong { color: #54f591; }
+
+        .error {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #ff6b6b;
+            display: none;
+        }
+
+        button {
+            height: 40px;
+            width: 120px;
+            border: none;
+            border-radius: 10px;
+            background: #20ff58;
+            color: #091f36;
+            font-size: 16px;
+            font-weight: bold;
+            margin: 10px 5px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        button:hover {
+            background: #42d57a;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(84, 245, 145, 0.4);
+        }
+
+        button:active {
+            transform: scale(0.95);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
     </style>
 </head>
 
 <body>
     <div class="inputFields">
-        <h1 style="color:white;">Login</h1>
+        <h1>Login</h1>
 
-        <input type="text" id="usernameField" placeholder="Username"><br><br>
-        <input type="password" id="passwordField" placeholder="Password"><br><br>
+        <input type="text" id="usernameField" placeholder="Username">
+        <div class="error" id="usernameError">⚠️ Username must be at least 3 characters</div>
+
+        <div class="password-wrapper">
+            <input type="password" id="passwordField" placeholder="Password">
+            <span class="togglePassword">👁️</span>
+        </div>
+        <div class="strength" id="passwordStrength"></div>
 
         <button id="loginBtn">Login</button>
         <button id="signupBtn">Sign Up</button>
+
+        <div class="error" id="errorMsg"></div>
     </div>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-        import { 
-            getFirestore, doc, getDoc, setDoc 
-        } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
         // 🔥 Firebase config
         const firebaseConfig = {
-            apiKey: "AIzaSyBXhiyGWev_pgR04Xqwq-09cE_oyrLWnU8",
+            apiKey: "YOUR_API_KEY",
             authDomain: "kitisnotebook.firebaseapp.com",
             projectId: "kitisnotebook",
             storageBucket: "kitisnotebook.firebasestorage.app",
@@ -113,12 +156,54 @@ button:active {
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
+        const errorMsg = document.getElementById("errorMsg");
+        const usernameError = document.getElementById("usernameError");
+        const strengthDisplay = document.getElementById("passwordStrength");
+
+        function showError(message) {
+            errorMsg.textContent = message;
+            errorMsg.style.display = "block";
+        }
+
+        // ✅ Password strength checker
+        document.getElementById("passwordField").addEventListener("input", (e) => {
+            const val = e.target.value;
+            let strength = "";
+            let className = "";
+
+            if (val.length === 0) {
+                strengthDisplay.textContent = "";
+                return;
+            }
+
+            if (val.length < 6) {
+                strength = "Weak";
+                className = "weak";
+            } else if (val.match(/[A-Z]/) && val.match(/[0-9]/) && val.length >= 8) {
+                strength = "Strong";
+                className = "strong";
+            } else {
+                strength = "Medium";
+                className = "medium";
+            }
+
+            strengthDisplay.textContent = `Password Strength: ${strength}`;
+            strengthDisplay.className = `strength ${className}`;
+        });
+
         async function createAccount() {
             const username = document.getElementById("usernameField").value.trim();
             const password = document.getElementById("passwordField").value;
 
+            if (username.length < 3) {
+                usernameError.style.display = "block";
+                return;
+            } else {
+                usernameError.style.display = "none";
+            }
+
             if (!username || !password) {
-                alert("Please enter username and password");
+                showError("⚠️ Please enter username and password");
                 return;
             }
 
@@ -126,19 +211,32 @@ button:active {
             const userSnap = await getDoc(userRef);
 
             if (userSnap.exists()) {
-                alert("Username already exists. Choose another.");
+                showError("⚠️ Username already exists. Choose another.");
                 return;
             }
 
             await setDoc(userRef, { username, password, createdAt: Date.now() });
-            alert("Account created! You can now login.");
+            alert("✅ Account created! You can now login.");
             document.getElementById("usernameField").value = "";
             document.getElementById("passwordField").value = "";
+            errorMsg.style.display = "none";
         }
 
         async function login() {
             const username = document.getElementById("usernameField").value.trim();
             const password = document.getElementById("passwordField").value;
+
+            if (username.length < 3) {
+                usernameError.style.display = "block";
+                return;
+            } else {
+                usernameError.style.display = "none";
+            }
+
+            if (!username || !password) {
+                showError("⚠️ Please fill in both fields.");
+                return;
+            }
 
             const userRef = doc(db, "users", username);
             const userSnap = await getDoc(userRef);
@@ -149,18 +247,22 @@ button:active {
                     localStorage.setItem("loggedInUser", username);
                     window.location.href = "index.html";
                 } else {
-                    alert("Wrong password.");
+                    showError("❌ Wrong password.");
                 }
             } else {
-                alert("User not found.");
+                showError("❌ User not found.");
             }
         }
 
-        // Hook up buttons (important when using type="module")
+        // 👁️ Toggle password visibility
+        document.querySelector(".togglePassword").addEventListener("click", () => {
+            const field = document.getElementById("passwordField");
+            field.type = field.type === "password" ? "text" : "password";
+        });
+
         document.getElementById("loginBtn").addEventListener("click", login);
         document.getElementById("signupBtn").addEventListener("click", createAccount);
 
-        // Auto-redirect if already logged in
         window.onload = () => {
             if (localStorage.getItem("loggedInUser")) {
                 window.location.href = "index.html";
