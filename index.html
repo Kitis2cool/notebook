@@ -10,7 +10,7 @@ body {
   display: flex;
   height: 100vh;
   font-family: "Segoe UI", Arial, sans-serif;
-  background: linear-gradient(135deg, #091f36, #0f2862); /* Purple → Blue Popsicle */
+  background: linear-gradient(135deg, #091f36, #0f2862);
   color: #f5f5f5;
   overflow: hidden;
 }
@@ -18,7 +18,7 @@ body {
 /* Sidebar */
 #sidebar {
   width: 250px;
-  background: rgba(15, 40, 98, 0.95); /* Blue Popsicle glassy */
+  background: rgba(15, 40, 98, 0.95);
   border-right: 1px solid #4f5f76;
   padding: 18px;
   overflow-y: auto;
@@ -61,6 +61,14 @@ body {
   margin-top: 3px;
 }
 
+.admin-badge {
+  font-size: 11px;
+  font-weight: bold;
+  color: #ffcc00;
+  margin-left: 6px;
+}
+
+/* Chat All Button */
 #chatAllBtn {
   width: 100%;
   padding: 12px;
@@ -152,7 +160,6 @@ body {
   transform: translateY(-2px);
 }
 
-/* Other people's messages */
 .note-item:not(.own-message) {
   align-self: flex-start;
   background: #4f5f76;
@@ -160,7 +167,6 @@ body {
   border-bottom-left-radius: 4px;
 }
 
-/* Your messages */
 .own-message {
   align-self: flex-end;
   background: #0f2862;
@@ -168,12 +174,17 @@ body {
   border-bottom-right-radius: 4px;
 }
 
-/* Private messages */
 .private-message {
   background: #9e363a;
   color: #fff;
   align-self: center;
   border-radius: 12px;
+  font-weight: bold;
+}
+
+.admin-message {
+  border: 2px solid #ffcc00;
+  background: #333366;
   font-weight: bold;
 }
 
@@ -248,8 +259,6 @@ body {
   transform: translateY(-2px);
   box-shadow: 0 3px 10px rgba(158,54,58,0.4);
 }
-
-
 </style>
 </head>
 <body>
@@ -261,7 +270,7 @@ body {
 </div>
 
 <div id="chatContainer">
-  <div id="tabs"></div> <!-- Tabs -->
+  <div id="tabs"></div>
   <div id="notesList"></div>
   <div id="chatBar">
     <input id="username" readonly>
@@ -291,12 +300,17 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
+// ----------- ADMIN SETTINGS -------------
+const ADMIN_USER = "Kitis"; // 👈 change this to your username
+let isAdmin = false;
+
 // ----------- LOGIN CHECK -------------
 const loggedInUser = localStorage.getItem("loggedInUser");
 if (!loggedInUser) {
-  window.location.href = "login.html"; // redirect if not logged in
+  window.location.href = "login.html";
 }
 document.getElementById("username").value = loggedInUser;
+if (loggedInUser === ADMIN_USER) isAdmin = true;
 
 // ----------- ONLINE USERS -------------
 const onlineUsersList = document.getElementById("onlineUsersList");
@@ -356,6 +370,12 @@ onSnapshot(collection(db, "onlineUsers"), snapshot => {
       span.textContent = `(last seen ${formatLastSeen(now - lastActive)})`;
       div.appendChild(span);
     }
+    if (user === ADMIN_USER) {
+      const badge = document.createElement("span");
+      badge.className = "admin-badge";
+      badge.textContent = "[ADMIN]";
+      div.appendChild(badge);
+    }
     div.onclick = () => { openTab(user); };
     onlineUsersList.appendChild(div);
   });
@@ -363,7 +383,7 @@ onSnapshot(collection(db, "onlineUsers"), snapshot => {
 
 // ----------- TABS SYSTEM -------------
 const tabsContainer = document.getElementById("tabs");
-let openTabs = {}; // { username: tabElement }
+let openTabs = {};
 let activeTab = "all"; 
 
 function openTab(user) {
@@ -417,7 +437,6 @@ async function sendMessage() {
 }
 
 document.getElementById("sendBtn").onclick = sendMessage;
-
 document.getElementById("noteInput").addEventListener("keydown", e=>{
   if(e.key==="Enter"){ e.preventDefault(); sendMessage(); }
 });
@@ -449,10 +468,12 @@ function renderMessage(docSnap,data){
   div.className="note-item";
   div.textContent = `${data.from} ➤ ${data.to}: ${data.text}`;
 
+  if(data.from===ADMIN_USER) div.classList.add("admin-message");
   if(data.from===loggedInUser) div.classList.add("own-message");
   else if(data.to===loggedInUser && data.to!=="all") div.classList.add("private-message");
 
-  if(data.from===loggedInUser){
+  // Admin can delete ALL, normal users only their own
+  if(data.from===loggedInUser || isAdmin){
     const delBtn=document.createElement("button");
     delBtn.textContent="Delete";
     delBtn.onclick=()=>deleteDoc(doc(db,"messages",docSnap.id));
@@ -463,7 +484,7 @@ function renderMessage(docSnap,data){
 
 // ----------- INIT -------------
 document.getElementById("chatAllBtn").onclick = () => openTab("all");
-openTab("all"); // default tab
+openTab("all");
 
 // ----------- LOGOUT -------------
 document.getElementById("logoutBtn").onclick = async ()=>{
@@ -474,8 +495,3 @@ document.getElementById("logoutBtn").onclick = async ()=>{
 </script>
 </body>
 </html>
-
-
-
-
-
