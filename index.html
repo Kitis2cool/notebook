@@ -4,51 +4,53 @@
 <meta charset="UTF-8">
 <title>Kitis Chatroom</title>
 <style>
- /* Base layout */
+/* Base layout */
 body {
   margin: 0;
   display: flex;
   height: 100vh;
-  font-family: Arial, Helvetica, sans-serif;
-  background: #091f36; /* Purple Shadow */
+  font-family: "Segoe UI", Arial, sans-serif;
+  background: linear-gradient(135deg, #091f36, #0f2862); /* Purple → Blue Popsicle */
   color: #f5f5f5;
+  overflow: hidden;
 }
 
 /* Sidebar */
 #sidebar {
-  width: 240px;
-  background: #0f2862; /* Blue Popsicle */
-  border-right: 1px solid #4f5f76; /* Grey Blue Leaf */
-  padding: 15px;
+  width: 250px;
+  background: rgba(15, 40, 98, 0.95); /* Blue Popsicle glassy */
+  border-right: 1px solid #4f5f76;
+  padding: 18px;
   overflow-y: auto;
-  color: #fff;
+  backdrop-filter: blur(8px);
+  box-shadow: 2px 0 6px rgba(0,0,0,0.3);
 }
 
 #sidebar h3 {
-  margin: 0 0 12px;
+  margin: 0 0 14px;
   font-size: 16px;
   font-weight: bold;
   color: #fff;
   border-bottom: 1px solid #4f5f76;
   padding-bottom: 6px;
+  letter-spacing: 0.5px;
 }
 
 .online-user {
-  padding: 8px 10px;
-  border-radius: 6px;
+  padding: 10px 12px;
+  border-radius: 10px;
   cursor: pointer;
-  margin: 6px 0;
-  transition: background 0.25s;
+  margin: 8px 0;
+  transition: transform 0.2s, background 0.25s;
   background: rgba(255,255,255,0.05);
   color: #f5f5f5;
 }
-
 .online-user:hover {
   background: rgba(255,255,255,0.15);
+  transform: translateX(4px);
 }
-
 .online-user.selected {
-  background: #4f5f76; /* Grey Blue Leaf */
+  background: #4f5f76;
   font-weight: bold;
 }
 
@@ -56,23 +58,24 @@ body {
   font-size: 11px;
   color: #ccc;
   display: block;
-  margin-top: 2px;
+  margin-top: 3px;
 }
 
 #chatAllBtn {
   width: 100%;
-  padding: 10px;
-  margin-top: 12px;
+  padding: 12px;
+  margin-top: 14px;
   border: none;
-  background: #9e363a; /* Redline */
+  background: linear-gradient(90deg, #9e363a, #7a272a);
   color: #fff;
   font-weight: bold;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: background 0.25s;
+  transition: transform 0.2s, box-shadow 0.2s;
 }
 #chatAllBtn:hover {
-  background: #7a272a;
+  transform: scale(1.05);
+  box-shadow: 0 3px 10px rgba(158,54,58,0.4);
 }
 
 /* Chat container */
@@ -80,44 +83,42 @@ body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: #091f36; /* Purple Shadow */
+  background: linear-gradient(180deg, #091f36, #0f2862);
   color: #f5f5f5;
 }
 
 /* Tabs */
 #tabs {
   display: flex;
-  background: #0f2862; /* Blue Popsicle */
-  border-bottom: 1px solid #4f5f76; /* Grey Blue Leaf */
+  background: #0f2862;
+  border-bottom: 1px solid #4f5f76;
 }
 
 .tab {
-  padding: 10px 16px;
+  padding: 12px 18px;
   cursor: pointer;
   border-right: 1px solid #4f5f76;
-  background: #0f2862; /* Blue Popsicle */
+  background: rgba(15, 40, 98, 0.9);
   font-size: 14px;
-  font-weight: 500;
   display: flex;
   align-items: center;
   color: #eee;
-  transition: background 0.25s, color 0.25s;
+  transition: background 0.25s, color 0.25s, transform 0.2s;
 }
-
 .tab:hover {
-  background: #4f5f76; /* Grey Blue Leaf */
+  background: #4f5f76;
+  transform: translateY(-2px);
 }
-
 .tab.active {
-  background: #091f36; /* Purple Shadow */
+  background: #091f36;
   font-weight: 600;
-  border-bottom: 3px solid #9e363a; /* Redline */
+  border-bottom: 3px solid #9e363a;
   color: #fff;
 }
 
 .tab .close-btn {
   margin-left: 8px;
-  color: #9e363a; /* Redline */
+  color: #9e363a;
   cursor: pointer;
   font-size: 13px;
   transition: color 0.2s;
@@ -126,61 +127,66 @@ body {
   color: #ff5c5c;
 }
 
-/* Messages */
+/* Messages list */
 #notesList {
   flex: 1;
   overflow-y: auto;
-  padding: 16px;
-  background: #0f2862; /* Blue Popsicle */
+  padding: 18px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
 
 /* Message bubbles */
 .note-item {
   max-width: 70%;
   padding: 10px 14px;
-  border-radius: 14px;
+  border-radius: 16px;
   font-size: 14px;
-  word-wrap: break-word;
   line-height: 1.4;
   position: relative;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  animation: fadeInUp 0.25s ease;
+  box-shadow: 0 3px 6px rgba(0,0,0,0.25);
+  transition: transform 0.2s;
+}
+.note-item:hover {
+  transform: translateY(-2px);
 }
 
-/* Other people's messages (left side) */
+/* Other people's messages */
 .note-item:not(.own-message) {
   align-self: flex-start;
-  background: #4f5f76; /* Grey Blue Leaf */
+  background: #4f5f76;
   color: #fff;
+  border-bottom-left-radius: 4px;
 }
 
-/* Your messages (right side) */
+/* Your messages */
 .own-message {
   align-self: flex-end;
-  background: #0f2862; /* Blue Popsicle */
+  background: #0f2862;
   color: #fff;
   border-bottom-right-radius: 4px;
 }
 
 /* Private messages */
 .private-message {
-  background: #9e363a; /* Redline */
+  background: #9e363a;
   color: #fff;
   align-self: center;
-  border-radius: 10px;
+  border-radius: 12px;
+  font-weight: bold;
 }
 
-/* Delete button inside messages */
+/* Delete button */
 .note-item button {
   margin-left: 10px;
   border: none;
-  background: #9e363a; /* Redline */
+  background: #9e363a;
   color: #fff;
   padding: 4px 8px;
   font-size: 12px;
-  border-radius: 5px;
+  border-radius: 6px;
   cursor: pointer;
   transition: background 0.2s;
 }
@@ -192,10 +198,11 @@ body {
 #chatBar {
   display: flex;
   padding: 12px;
-  background: #4f5f76; /* Grey Blue Leaf */
+  background: rgba(79,95,118,0.9);
   align-items: center;
   gap: 8px;
   border-top: 1px solid #333;
+  backdrop-filter: blur(6px);
 }
 
 #username {
@@ -203,7 +210,7 @@ body {
   padding: 6px;
   border-radius: 6px;
   border: 1px solid #333;
-  background: #091f36; /* Purple Shadow */
+  background: #091f36;
   color: #fff;
   text-align: center;
   font-size: 13px;
@@ -212,50 +219,49 @@ body {
 
 #noteInput {
   flex: 1;
-  height: 36px;
+  height: 38px;
   border-radius: 6px;
   border: 1px solid #333;
-  padding: 0 10px;
+  padding: 0 12px;
   font-size: 14px;
-  background: #0f2862; /* Blue Popsicle */
+  background: #0f2862;
   color: #fff;
   transition: border 0.2s, background 0.2s;
 }
 #noteInput:focus {
-  border-color: #9e363a; /* Redline */
+  border-color: #9e363a;
   outline: none;
   background: #091f36;
 }
 
-#sendBtn {
-  padding: 0 15px;
-  border: none;
-  height: 36px;
+#sendBtn, #logoutBtn {
+  padding: 0 16px;
+  height: 38px;
   border-radius: 6px;
   cursor: pointer;
-  background: #9e363a; /* Redline */
+  background: linear-gradient(90deg, #9e363a, #7a272a);
   color: #fff;
   font-weight: bold;
-  transition: background 0.25s;
+  border: none;
+  transition: transform 0.2s, box-shadow 0.2s;
 }
-#sendBtn:hover {
-  background: #7a272a;
+#sendBtn:hover, #logoutBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 3px 10px rgba(158,54,58,0.4);
 }
 
-#logoutBtn {
-  padding: 0 15px;
-  border: none;
-  height: 36px;
-  border-radius: 6px;
-  cursor: pointer;
-  background: #9e363a; /* Redline */
-  color: #fff;
-  font-weight: bold;
-  transition: background 0.25s;
+/* Animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
-#logoutBtn:hover {
-  background: #7a272a;
-}
+
 
 </style>
 </head>
@@ -481,6 +487,7 @@ document.getElementById("logoutBtn").onclick = async ()=>{
 </script>
 </body>
 </html>
+
 
 
 
