@@ -5,7 +5,7 @@
 <title>Kitis Chatroom</title>
 <style>
   body { margin:0; display:flex; height:100vh; font-family: Arial; }
-  #sidebar { width:200px; background:#eee; padding:10px; overflow-y:auto; }
+  #sidebar { width:220px; background:#eee; padding:10px; overflow-y:auto; }
   #chatContainer { flex:1; display:flex; flex-direction:column; }
   #notesList { flex:1; overflow-y:auto; padding:10px; background:#f0f0f0; }
   .note-item { margin-bottom:5px; padding:5px; border-radius:5px; display:flex; justify-content:space-between; align-items:center; }
@@ -15,8 +15,9 @@
   #noteInput { flex:1; height:30px; border-radius:5px; padding:5px; }
   #logoutBtn { background-color:#f55; border:none; height:30px; border-radius:5px; cursor:pointer; }
   #sendBtn, #chatAllBtn { border:none; height:30px; border-radius:5px; cursor:pointer; background:#5a5; }
-  .online-user { cursor:pointer; margin:3px 0; }
+  .online-user { cursor:pointer; margin:5px 0; font-size:14px; }
   .online-user.selected { font-weight:bold; }
+  .last-seen { font-size:12px; color:#555; margin-left:5px; }
 </style>
 </head>
 <body>
@@ -61,7 +62,6 @@ const db = getFirestore(app);
 const loggedInUserKey = 'loggedInUser';
 let loggedInUser = localStorage.getItem(loggedInUserKey);
 
-// Redirect to login page if not logged in
 async function checkLogin() {
   if (!loggedInUser) {
     let username = prompt("Enter username:");
@@ -71,7 +71,6 @@ async function checkLogin() {
     const snapshot = await getDocs(query(usersRef, where("username","==",username)));
 
     if (snapshot.empty) {
-      // Register new user
       await addDoc(usersRef, { username, password });
       loggedInUser = username;
       localStorage.setItem(loggedInUserKey, username);
@@ -98,34 +97,50 @@ await checkLogin();
 const onlineUsersList = document.getElementById("onlineUsersList");
 let selectedUser = "all";
 
-// Go online (unique doc per username)
 async function goOnline() {
   const userRef = doc(db, "onlineUsers", loggedInUser); 
   await setDoc(userRef, { username: loggedInUser, lastActive: Date.now() });
 }
 goOnline();
 
-// Update lastActive periodically
 setInterval(async () => {
   const userRef = doc(db, "onlineUsers", loggedInUser);
   await setDoc(userRef, { username: loggedInUser, lastActive: Date.now() }, { merge: true });
 }, 30000);
 
-// Display online users & filter inactive
+// Format "last seen"
+function formatLastSeen(ms) {
+  const seconds = Math.floor(ms/1000);
+  if (seconds < 60) return "just now";
+  const minutes = Math.floor(seconds/60);
+  if (minutes < 60) return minutes + " min ago";
+  const hours = Math.floor(minutes/60);
+  return hours + " hr ago";
+}
+
+// Display users
 onSnapshot(collection(db, "onlineUsers"), snapshot => {
   onlineUsersList.innerHTML = "";
   const now = Date.now();
   snapshot.forEach(docSnap => {
     const user = docSnap.data().username;
     const lastActive = docSnap.data().lastActive || 0;
-
-    // Hide users inactive > 1 min
-    if (now - lastActive > 60 * 1000) return;
-
     if (user === loggedInUser) return;
+
     const div = document.createElement("div");
     div.className = "online-user" + (selectedUser===user?" selected":"");
-    div.textContent = user;
+    
+    // online if active within last minute
+    if (now - lastActive <= 60 * 1000) {
+      div.textContent = user + " (online)";
+    } else {
+      div.textContent = user;
+      const span = document.createElement("span");
+      span.className = "last-seen";
+      span.textContent = `(last seen ${formatLastSeen(now - lastActive)})`;
+      div.appendChild(span);
+    }
+
     div.onclick = () => { selectedUser = user; highlightSelectedUser(); displayMessages(); };
     onlineUsersList.appendChild(div);
   });
@@ -135,12 +150,11 @@ function highlightSelectedUser() {
   const users = document.querySelectorAll(".online-user");
   users.forEach(u=>u.classList.remove("selected"));
   if (selectedUser!=="all") {
-    const el = Array.from(users).find(u=>u.textContent===selectedUser);
+    const el = Array.from(users).find(u=>u.textContent.includes(selectedUser));
     if(el) el.classList.add("selected");
   }
 }
 
-// Chat All button
 document.getElementById("chatAllBtn").onclick = () => { selectedUser="all"; highlightSelectedUser(); displayMessages(); };
 
 // ----------- MESSAGES -------------
@@ -159,7 +173,6 @@ document.getElementById("noteInput").addEventListener("keydown", e=>{
   if(e.key==="Enter"){ e.preventDefault(); sendMessage(); }
 });
 
-// Display messages
 function displayMessages() {
   const q = query(collection(db,"messages"),orderBy("timestamp"));
   onSnapshot(q, snapshot=>{
@@ -167,7 +180,6 @@ function displayMessages() {
     const now = Date.now();
     snapshot.forEach(async docSnap=>{
       const data = docSnap.data();
-      // Auto delete 10min
       if(now-data.timestamp>10*60*1000){ await deleteDoc(doc(db,"messages",docSnap.id)); return; }
 
       if(data.to==="all" || data.to===loggedInUser || data.from===loggedInUser){
@@ -175,11 +187,9 @@ function displayMessages() {
         div.className="note-item";
         div.textContent = `${data.from} ➤ ${data.to}: ${data.text}`;
 
-        // Highlight own messages
         if(data.from===loggedInUser) div.classList.add("own-message");
         else if(data.to===loggedInUser && data.to!=="all") div.classList.add("private-message");
 
-        // Delete button for own messages
         if(data.from===loggedInUser){
           const delBtn=document.createElement("button");
           delBtn.textContent="Delete";
@@ -202,7 +212,6 @@ document.getElementById("logoutBtn").onclick = async ()=>{
   localStorage.removeItem(loggedInUserKey);
   window.location.href="login.html";
 };
-
 </script>
 </body>
 </html>
