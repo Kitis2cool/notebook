@@ -315,25 +315,22 @@ const firebaseConfig = {
   appId: "1:450680847245:web:2e4ebb71ccd3a7920bdbc4",
   measurementId: "G-W3ZVV6N6KK"
 };
-
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 // ----------- ADMIN SETTINGS -------------
-const ADMIN_USER = "kitis"; // 👈 change this to your username
+const ADMIN_USER = "kitis";
 let isAdmin = false;
 
-// ----------- LOGIN CHECK -------------
+// ----------- LOGIN -------------
 const loggedInUser = localStorage.getItem("loggedInUser");
-if (!loggedInUser) {
-  window.location.href = "login.html";
-}
+if (!loggedInUser) window.location.href = "login.html";
 document.getElementById("username").value = loggedInUser;
 if (loggedInUser === ADMIN_USER) isAdmin = true;
 
 // ----------- UNREAD TRACKING -------------
-let unreadCounts = {}; // { senderUsername: number }
-let processedMessageIds = new Set(); // avoid double-counting when onSnapshot fires initially
+let unreadCounts = {};
+let processedMessageIds = new Set();
 
 // ----------- ONLINE USERS -------------
 const onlineUsersList = document.getElementById("onlineUsersList");
@@ -343,7 +340,6 @@ async function goOnline() {
   await setDoc(userRef, { username: loggedInUser, lastActive: Date.now() });
 }
 goOnline();
-
 setInterval(async () => {
   const userRef = doc(db, "onlineUsers", loggedInUser);
   await setDoc(userRef, { username: loggedInUser, lastActive: Date.now() }, { merge: true });
@@ -362,7 +358,6 @@ onSnapshot(collection(db, "onlineUsers"), snapshot => {
   onlineUsersList.innerHTML = "";
   const now = Date.now();
   const usersMap = {};
-
   snapshot.forEach(docSnap => {
     const data = docSnap.data();
     const user = data.username;
@@ -384,8 +379,8 @@ onSnapshot(collection(db, "onlineUsers"), snapshot => {
   sortedUsers.forEach(({ user, lastActive }) => {
     const div = document.createElement("div");
     div.className = "online-user";
-    div.dataset.user = user; // <-- used by badge updater
-    // primary label area (left)
+    div.dataset.user = user;
+
     const left = document.createElement("div");
     left.style.display = "flex";
     left.style.flexDirection = "column";
@@ -400,7 +395,6 @@ onSnapshot(collection(db, "onlineUsers"), snapshot => {
     }
     div.appendChild(left);
 
-    // right area for badges / admin badge
     const right = document.createElement("div");
     right.style.display = "flex";
     right.style.alignItems = "center";
@@ -410,26 +404,21 @@ onSnapshot(collection(db, "onlineUsers"), snapshot => {
       badge.textContent = "[ADMIN]";
       right.appendChild(badge);
     }
-
-    // unread placeholder (populated by updateUnreadBadge)
     const unreadHolder = document.createElement("span");
     unreadHolder.className = "unread-holder";
     right.appendChild(unreadHolder);
-
     div.appendChild(right);
 
     div.onclick = () => { openTab(user); };
     onlineUsersList.appendChild(div);
-
-    // ensure tab badge matches unread (if tab exists)
     updateUnreadBadge(user);
   });
 });
 
-// ----------- TABS SYSTEM -------------
+// ----------- TABS -------------
 const tabsContainer = document.getElementById("tabs");
 let openTabs = {};
-let activeTab = "all"; 
+let activeTab = "all";
 
 function openTab(user) {
   if (!openTabs[user]) {
@@ -453,7 +442,6 @@ function openTab(user) {
 
     tab.onclick = () => {
       activeTab = user;
-      // Reset unread when opening their tab
       if (user !== "all" && unreadCounts[user]) {
         unreadCounts[user] = 0;
         updateUnreadBadge(user);
@@ -464,12 +452,9 @@ function openTab(user) {
 
     openTabs[user] = tab;
     tabsContainer.appendChild(tab);
-
-    // show existing unread count if any
     updateUnreadBadge(user);
   }
   activeTab = user;
-  // Reset unread when opening their tab
   if (user !== "all" && unreadCounts[user]) {
     unreadCounts[user] = 0;
     updateUnreadBadge(user);
@@ -494,7 +479,6 @@ async function sendMessage() {
   });
   document.getElementById("noteInput").value="";
 }
-
 document.getElementById("sendBtn").onclick = sendMessage;
 document.getElementById("noteInput").addEventListener("keydown", e=>{
   if(e.key==="Enter"){ e.preventDefault(); sendMessage(); }
@@ -507,7 +491,6 @@ function displayMessages() {
     const now = Date.now();
     snapshot.forEach(async docSnap=>{
       const data = docSnap.data();
-      // delete very old messages server-side display (existing logic)
       if(now-data.timestamp>10*60*1000){ await deleteDoc(doc(db,"messages",docSnap.id)); return; }
 
       if (activeTab==="all") {
@@ -532,7 +515,6 @@ function renderMessage(docSnap,data){
   if(data.from===loggedInUser) div.classList.add("own-message");
   else if(data.to===loggedInUser && data.to!=="all") div.classList.add("private-message");
 
-  // Admin can delete ALL, normal users only their own
   if(data.from===loggedInUser || isAdmin){
     const delBtn=document.createElement("button");
     delBtn.textContent="Delete";
@@ -542,37 +524,27 @@ function renderMessage(docSnap,data){
   notesList.appendChild(div);
 
   // --- UNREAD LOGIC ---
-  // Only consider private messages sent TO me, not my own messages,
-  // increment unread if I am not currently viewing that sender's tab,
-  // and only if this message has not already been processed.
-  try {
-    const msgId = docSnap.id;
-    if (!processedMessageIds.has(msgId)) {
-      processedMessageIds.add(msgId);
-
-      if (
-        data.to === loggedInUser &&          // it's for me
-        data.from !== loggedInUser &&        // not my own message
-        data.to !== "all" &&                 // private (not 'all')
-        activeTab !== data.from              // tab for that sender isn't active
-      ) {
-        unreadCounts[data.from] = (unreadCounts[data.from] || 0) + 1;
-        updateUnreadBadge(data.from);
-      }
+  const msgId = docSnap.id;
+  if (!processedMessageIds.has(msgId)) {
+    processedMessageIds.add(msgId);
+    if (
+      data.to === loggedInUser &&
+      data.from !== loggedInUser &&
+      data.to !== "all" &&
+      activeTab !== data.from
+    ) {
+      unreadCounts[data.from] = (unreadCounts[data.from] || 0) + 1;
+      updateUnreadBadge(data.from);
     }
-  } catch (e) {
-    console.error("Unread processing error:", e);
   }
 }
 
-// ----------- UNREAD BADGE UPDATER -------------
+// ----------- UNREAD BADGES -------------
 function updateUnreadBadge(user) {
   const count = unreadCounts[user] || 0;
 
-  // Update tab badge
   if (openTabs[user]) {
     const tab = openTabs[user];
-    // remove old badge
     const oldBadge = tab.querySelector(".unread-badge");
     if (oldBadge) oldBadge.remove();
     if (count > 0) {
@@ -583,13 +555,11 @@ function updateUnreadBadge(user) {
     }
   }
 
-  // Update sidebar badge
   const userDiv = document.querySelector(`.online-user[data-user="${CSS.escape(user)}"]`);
   if (userDiv) {
-    // remove existing unread badge in the holder
     const holder = userDiv.querySelector(".unread-holder");
     if (holder) {
-      holder.innerHTML = ""; // clear and repopulate
+      holder.innerHTML = "";
       if (count > 0) {
         const b = document.createElement("span");
         b.className = "unread-badge";
@@ -624,3 +594,4 @@ function changeBackground() {
 </script>
 </body>
 </html>
+
