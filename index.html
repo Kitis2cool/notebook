@@ -2,20 +2,89 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <link rel="stylesheet" href="/style.css">
   <title>Kitis's Chatroom</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    h1 {
+      text-align: center;
+      margin: 10px 0;
+    }
+
+    #notesList {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+      background-color: rgba(200,200,200,0.3);
+    }
+
+    .note-item {
+      margin-bottom: 5px;
+      padding: 5px;
+      background-color: rgba(255,255,255,0.8);
+      border-radius: 5px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    #chatBar {
+      display: flex;
+      padding: 10px;
+      background-color: #ccc;
+      position: sticky;
+      bottom: 0;
+      align-items: center;
+      gap: 5px;
+    }
+
+    #noteInput {
+      flex: 1;
+      height: 30px;
+      padding: 5px;
+      border-radius: 5px;
+      border: 1px solid #888;
+    }
+
+    #username {
+      width: 120px;
+      border-radius: 5px;
+      border: 1px solid #888;
+      padding: 5px;
+    }
+
+    button {
+      height: 30px;
+      border-radius: 5px;
+      border: none;
+      background-color: rgb(84, 245, 145);
+      cursor: pointer;
+    }
+
+    #logoutBtn {
+      background-color: rgb(245, 84, 84);
+    }
+  </style>
 </head>
 <body>
+
   <h1>Kitis's Notebook</h1>
 
-  <input id="username" readonly>
-  <button id="logoutBtn">Logout</button><br><br>
-
-  <textarea id="noteInput" placeholder="Write a note..."></textarea><br>
-  <button id="saveBtn">Send Message</button>
-
-  <h2>Messages:</h2>
   <div id="notesList"></div>
+
+  <div id="chatBar">
+    <input id="username" readonly>
+    <textarea id="noteInput" placeholder="Write a message..." rows="1"></textarea>
+    <button id="saveBtn">Send</button>
+    <button id="logoutBtn">Logout</button>
+  </div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
@@ -35,7 +104,9 @@
     const db = getFirestore(app);
 
     const usernameField = document.getElementById("username");
+    const noteInput = document.getElementById("noteInput");
     const loggedInUser = localStorage.getItem("loggedInUser");
+
     if (!loggedInUser) {
       alert("Not logged in!");
       window.location.href = "login.html";
@@ -49,16 +120,16 @@
     };
 
     async function saveNote() {
-      const noteInput = document.getElementById("noteInput").value.trim();
-      if (!noteInput) return alert("Please enter a message.");
+      const text = noteInput.value.trim();
+      if (!text) return;
 
       await addDoc(collection(db, "notes"), {
-        text: noteInput,
+        text,
         username: loggedInUser,
         timestamp: Date.now()
       });
 
-      document.getElementById("noteInput").value = "";
+      noteInput.value = "";
     }
 
     async function deleteNote(id, noteUsername) {
@@ -84,7 +155,7 @@
           // Auto-delete messages older than 10 minutes
           if (data.timestamp && now - data.timestamp > 10 * 60 * 1000) {
             await deleteDoc(doc(db, "notes", docSnap.id));
-            return; // skip rendering this note
+            return;
           }
 
           const div = document.createElement("div");
@@ -94,24 +165,34 @@
           p.textContent = `${data.username}: ${data.text || "(empty)"}`;
           div.appendChild(p);
 
-          // Delete button only for author
           if (data.username === loggedInUser) {
             const delBtn = document.createElement("button");
             delBtn.textContent = "Delete";
             delBtn.onclick = () => deleteNote(docSnap.id, data.username);
-            delBtn.className = "delBtn";
             div.appendChild(delBtn);
           }
 
           notesList.appendChild(div);
         });
+
+        // Auto-scroll to bottom
+        notesList.scrollTop = notesList.scrollHeight;
       });
     }
+
+    // Send message on Enter
+    noteInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault(); // prevent newline
+        saveNote();
+      }
+    });
 
     window.onload = () => {
       document.getElementById("saveBtn").onclick = saveNote;
       setupRealtimeNotes();
     };
   </script>
+
 </body>
 </html>
