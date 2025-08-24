@@ -4,58 +4,57 @@
 <meta charset="UTF-8">
 <title>Kitis Chatroom</title>
 <style>
-  /* Global */
+ /* Base layout */
 body {
   margin: 0;
   display: flex;
   height: 100vh;
-  font-family: "Inter", Arial, Helvetica, sans-serif;
+  font-family: Arial, Helvetica, sans-serif;
   background: #091f36; /* Purple Shadow */
   color: #f5f5f5;
 }
 
 /* Sidebar */
 #sidebar {
-  width: 250px;
+  width: 240px;
   background: #0f2862; /* Blue Popsicle */
   border-right: 1px solid #4f5f76; /* Grey Blue Leaf */
-  padding: 18px;
+  padding: 15px;
   overflow-y: auto;
-  box-shadow: 2px 0 6px rgba(0,0,0,0.25);
-  color: #f5f5f5;
+  color: #fff;
 }
 
 #sidebar h3 {
-  margin: 0 0 14px;
-  font-size: 15px;
-  font-weight: 600;
+  margin: 0 0 12px;
+  font-size: 16px;
+  font-weight: bold;
   color: #fff;
-  letter-spacing: 0.4px;
+  border-bottom: 1px solid #4f5f76;
+  padding-bottom: 6px;
 }
 
 .online-user {
   padding: 8px 10px;
-  border-radius: 8px;
+  border-radius: 6px;
   cursor: pointer;
   margin: 6px 0;
-  transition: background 0.25s, transform 0.15s;
-  color: #e6e6e6;
+  transition: background 0.25s;
+  background: rgba(255,255,255,0.05);
+  color: #f5f5f5;
 }
 
 .online-user:hover {
-  background: rgba(255,255,255,0.08);
-  transform: translateX(3px);
+  background: rgba(255,255,255,0.15);
 }
 
 .online-user.selected {
-  background: rgba(255,255,255,0.15);
-  font-weight: 600;
-  border-left: 3px solid #9e363a; /* Redline */
+  background: #4f5f76; /* Grey Blue Leaf */
+  font-weight: bold;
 }
 
 .last-seen {
   font-size: 11px;
-  color: #b3b3b3;
+  color: #ccc;
   display: block;
   margin-top: 2px;
 }
@@ -63,19 +62,17 @@ body {
 #chatAllBtn {
   width: 100%;
   padding: 10px;
-  margin-top: 14px;
+  margin-top: 12px;
   border: none;
-  background: #4f5f76; /* Grey Blue Leaf */
+  background: #9e363a; /* Redline */
   color: #fff;
   font-weight: bold;
-  border-radius: 8px;
+  border-radius: 6px;
   cursor: pointer;
-  transition: transform 0.15s, box-shadow 0.2s, background 0.2s;
+  transition: background 0.25s;
 }
 #chatAllBtn:hover {
-  background: #3a435c;
-  transform: scale(1.03);
-  box-shadow: 0 3px 8px rgba(0,0,0,0.2);
+  background: #7a272a;
 }
 
 /* Chat container */
@@ -83,38 +80,39 @@ body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: #fff;
-  color: #333;
+  background: #091f36; /* Purple Shadow */
+  color: #f5f5f5;
 }
 
 /* Tabs */
 #tabs {
   display: flex;
-  background: #f5f5f5;
-  border-bottom: 1px solid #ddd;
+  background: #0f2862; /* Blue Popsicle */
+  border-bottom: 1px solid #4f5f76; /* Grey Blue Leaf */
 }
 
 .tab {
   padding: 10px 16px;
   cursor: pointer;
-  border-right: 1px solid #eee;
-  background: #eaeaea;
+  border-right: 1px solid #4f5f76;
+  background: #0f2862; /* Blue Popsicle */
   font-size: 14px;
   font-weight: 500;
   display: flex;
   align-items: center;
-  transition: background 0.25s;
+  color: #eee;
+  transition: background 0.25s, color 0.25s;
 }
 
 .tab:hover {
-  background: #ddd;
+  background: #4f5f76; /* Grey Blue Leaf */
 }
 
 .tab.active {
-  background: #fff;
+  background: #091f36; /* Purple Shadow */
   font-weight: 600;
-  border-bottom: 3px solid #0f2862; /* Blue Popsicle */
-  color: #0f2862;
+  border-bottom: 3px solid #9e363a; /* Redline */
+  color: #fff;
 }
 
 .tab .close-btn {
@@ -125,74 +123,88 @@ body {
   transition: color 0.2s;
 }
 .tab .close-btn:hover {
-  color: #7a272a;
+  color: #ff5c5c;
 }
 
 /* Messages */
 #notesList {
   flex: 1;
   overflow-y: auto;
-  padding: 14px;
-  background: #f9fafb;
-}
-
-.note-item {
-  margin-bottom: 10px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  font-size: 14px;
+  padding: 16px;
+  background: #0f2862; /* Blue Popsicle */
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Message bubbles */
+.note-item {
+  max-width: 70%;
+  padding: 10px 14px;
+  border-radius: 14px;
+  font-size: 14px;
   word-wrap: break-word;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.07);
-  transition: transform 0.1s;
+  line-height: 1.4;
+  position: relative;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
 }
 
-.note-item:hover {
-  transform: translateY(-1px);
+/* Other people's messages (left side) */
+.note-item:not(.own-message) {
+  align-self: flex-start;
+  background: #4f5f76; /* Grey Blue Leaf */
+  color: #fff;
 }
 
+/* Your messages (right side) */
 .own-message {
-  background-color: rgba(15,40,98,0.15); /* Blue Popsicle soft */
+  align-self: flex-end;
+  background: #0f2862; /* Blue Popsicle */
+  color: #fff;
+  border-bottom-right-radius: 4px;
 }
 
+/* Private messages */
 .private-message {
-  background-color: rgba(158,54,58,0.15); /* Redline soft */
+  background: #9e363a; /* Redline */
+  color: #fff;
+  align-self: center;
+  border-radius: 10px;
 }
 
+/* Delete button inside messages */
 .note-item button {
-  margin-left: 12px;
+  margin-left: 10px;
   border: none;
   background: #9e363a; /* Redline */
   color: #fff;
-  padding: 4px 10px;
+  padding: 4px 8px;
   font-size: 12px;
-  border-radius: 6px;
+  border-radius: 5px;
   cursor: pointer;
-  transition: background 0.2s, transform 0.1s;
+  transition: background 0.2s;
 }
 .note-item button:hover {
   background: #7a272a;
-  transform: scale(1.05);
 }
 
 /* Chat bar */
 #chatBar {
   display: flex;
   padding: 12px;
-  background: #f3f3f3;
+  background: #4f5f76; /* Grey Blue Leaf */
   align-items: center;
   gap: 8px;
-  border-top: 1px solid #ddd;
+  border-top: 1px solid #333;
 }
 
 #username {
   width: 110px;
   padding: 6px;
   border-radius: 6px;
-  border: 1px solid #ccc;
-  background: #fafafa;
+  border: 1px solid #333;
+  background: #091f36; /* Purple Shadow */
+  color: #fff;
   text-align: center;
   font-size: 13px;
   font-weight: 500;
@@ -200,47 +212,49 @@ body {
 
 #noteInput {
   flex: 1;
-  height: 34px;
+  height: 36px;
   border-radius: 6px;
-  border: 1px solid #ccc;
+  border: 1px solid #333;
   padding: 0 10px;
   font-size: 14px;
-  background: #fff;
-  transition: border 0.2s;
+  background: #0f2862; /* Blue Popsicle */
+  color: #fff;
+  transition: border 0.2s, background 0.2s;
 }
 #noteInput:focus {
-  border-color: #0f2862; /* Blue Popsicle */
+  border-color: #9e363a; /* Redline */
   outline: none;
-}
-
-#sendBtn,
-#logoutBtn {
-  padding: 0 16px;
-  height: 34px;
-  border-radius: 6px;
-  border: none;
-  cursor: pointer;
-  font-weight: 600;
-  color: #fff;
-  transition: transform 0.15s, box-shadow 0.2s;
+  background: #091f36;
 }
 
 #sendBtn {
-  background: #0f2862; /* Blue Popsicle */
+  padding: 0 15px;
+  border: none;
+  height: 36px;
+  border-radius: 6px;
+  cursor: pointer;
+  background: #9e363a; /* Redline */
+  color: #fff;
+  font-weight: bold;
+  transition: background 0.25s;
 }
 #sendBtn:hover {
-  background: #091f36; /* Purple Shadow */
-  transform: scale(1.05);
-  box-shadow: 0 3px 6px rgba(0,0,0,0.2);
+  background: #7a272a;
 }
 
 #logoutBtn {
+  padding: 0 15px;
+  border: none;
+  height: 36px;
+  border-radius: 6px;
+  cursor: pointer;
   background: #9e363a; /* Redline */
+  color: #fff;
+  font-weight: bold;
+  transition: background 0.25s;
 }
 #logoutBtn:hover {
   background: #7a272a;
-  transform: scale(1.05);
-  box-shadow: 0 3px 6px rgba(0,0,0,0.25);
 }
 
 </style>
@@ -467,5 +481,6 @@ document.getElementById("logoutBtn").onclick = async ()=>{
 </script>
 </body>
 </html>
+
 
 
