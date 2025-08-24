@@ -44,6 +44,9 @@ body {
   transition: transform 0.2s, background 0.25s;
   background: rgba(255,255,255,0.05);
   color: #f5f5f5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 .online-user:hover {
   background: rgba(255,255,255,0.15);
@@ -66,6 +69,17 @@ body {
   font-weight: bold;
   color: #ffcc00;
   margin-left: 6px;
+}
+
+/* Unread badge */
+.unread-badge {
+  background: #9e363a;
+  color: #fff;
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 12px;
+  font-weight: bold;
+  margin-left: 8px;
 }
 
 /* Chat All Button */
@@ -100,18 +114,22 @@ body {
   display: flex;
   background: #0f2862;
   border-bottom: 1px solid #4f5f76;
+  padding: 6px;
+  gap: 8px;
 }
 
 .tab {
-  padding: 12px 18px;
+  padding: 8px 12px;
   cursor: pointer;
   border-right: 1px solid #4f5f76;
   background: rgba(15, 40, 98, 0.9);
   font-size: 14px;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   color: #eee;
   transition: background 0.25s, color 0.25s, transform 0.2s;
+  border-radius: 8px;
+  gap: 8px;
 }
 .tab:hover {
   background: #4f5f76;
@@ -268,7 +286,6 @@ body {
   <div id="onlineUsersList"></div>
   <button id="chatAllBtn">Chat All</button>
   <input type="color" id="bgSelector" onchange="changeBackground()">
-
 </div>
 
 <div id="chatContainer">
@@ -302,8 +319,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-
-
 // ----------- ADMIN SETTINGS -------------
 const ADMIN_USER = "kitis"; // 👈 change this to your username
 let isAdmin = false;
@@ -315,6 +330,10 @@ if (!loggedInUser) {
 }
 document.getElementById("username").value = loggedInUser;
 if (loggedInUser === ADMIN_USER) isAdmin = true;
+
+// ----------- UNREAD TRACKING -------------
+let unreadCounts = {}; // { senderUsername: number }
+let processedMessageIds = new Set(); // avoid double-counting when onSnapshot fires initially
 
 // ----------- ONLINE USERS -------------
 const onlineUsersList = document.getElementById("onlineUsersList");
@@ -365,23 +384,45 @@ onSnapshot(collection(db, "onlineUsers"), snapshot => {
   sortedUsers.forEach(({ user, lastActive }) => {
     const div = document.createElement("div");
     div.className = "online-user";
-    if (now - lastActive <= 60 * 1000) {
-      div.textContent = user + " (online)";
-    } else {
-      div.textContent = user;
+    div.dataset.user = user; // <-- used by badge updater
+    // primary label area (left)
+    const left = document.createElement("div");
+    left.style.display = "flex";
+    left.style.flexDirection = "column";
+    const label = document.createElement("span");
+    label.textContent = user + (now - lastActive <= 60 * 1000 ? " (online)" : "");
+    left.appendChild(label);
+    if (now - lastActive > 60 * 1000) {
       const span = document.createElement("span");
       span.className = "last-seen";
       span.textContent = `(last seen ${formatLastSeen(now - lastActive)})`;
-      div.appendChild(span);
+      left.appendChild(span);
     }
+    div.appendChild(left);
+
+    // right area for badges / admin badge
+    const right = document.createElement("div");
+    right.style.display = "flex";
+    right.style.alignItems = "center";
     if (user === ADMIN_USER) {
       const badge = document.createElement("span");
       badge.className = "admin-badge";
       badge.textContent = "[ADMIN]";
-      div.appendChild(badge);
+      right.appendChild(badge);
     }
+
+    // unread placeholder (populated by updateUnreadBadge)
+    const unreadHolder = document.createElement("span");
+    unreadHolder.className = "unread-holder";
+    right.appendChild(unreadHolder);
+
+    div.appendChild(right);
+
     div.onclick = () => { openTab(user); };
     onlineUsersList.appendChild(div);
+
+    // ensure tab badge matches unread (if tab exists)
+    updateUnreadBadge(user);
   });
 });
 
@@ -394,6 +435,7 @@ function openTab(user) {
   if (!openTabs[user]) {
     const tab = document.createElement("div");
     tab.className = "tab" + (user===activeTab ? " active" : "");
+    tab.dataset.user = user;
     tab.textContent = user==="all" ? "All Chat" : user;
 
     if (user !== "all") {
@@ -411,14 +453,27 @@ function openTab(user) {
 
     tab.onclick = () => {
       activeTab = user;
+      // Reset unread when opening their tab
+      if (user !== "all" && unreadCounts[user]) {
+        unreadCounts[user] = 0;
+        updateUnreadBadge(user);
+      }
       highlightActiveTab();
       displayMessages();
     };
 
     openTabs[user] = tab;
     tabsContainer.appendChild(tab);
+
+    // show existing unread count if any
+    updateUnreadBadge(user);
   }
   activeTab = user;
+  // Reset unread when opening their tab
+  if (user !== "all" && unreadCounts[user]) {
+    unreadCounts[user] = 0;
+    updateUnreadBadge(user);
+  }
   highlightActiveTab();
   displayMessages();
 }
@@ -452,6 +507,7 @@ function displayMessages() {
     const now = Date.now();
     snapshot.forEach(async docSnap=>{
       const data = docSnap.data();
+      // delete very old messages server-side display (existing logic)
       if(now-data.timestamp>10*60*1000){ await deleteDoc(doc(db,"messages",docSnap.id)); return; }
 
       if (activeTab==="all") {
@@ -484,6 +540,64 @@ function renderMessage(docSnap,data){
     div.appendChild(delBtn);
   }
   notesList.appendChild(div);
+
+  // --- UNREAD LOGIC ---
+  // Only consider private messages sent TO me, not my own messages,
+  // increment unread if I am not currently viewing that sender's tab,
+  // and only if this message has not already been processed.
+  try {
+    const msgId = docSnap.id;
+    if (!processedMessageIds.has(msgId)) {
+      processedMessageIds.add(msgId);
+
+      if (
+        data.to === loggedInUser &&          // it's for me
+        data.from !== loggedInUser &&        // not my own message
+        data.to !== "all" &&                 // private (not 'all')
+        activeTab !== data.from              // tab for that sender isn't active
+      ) {
+        unreadCounts[data.from] = (unreadCounts[data.from] || 0) + 1;
+        updateUnreadBadge(data.from);
+      }
+    }
+  } catch (e) {
+    console.error("Unread processing error:", e);
+  }
+}
+
+// ----------- UNREAD BADGE UPDATER -------------
+function updateUnreadBadge(user) {
+  const count = unreadCounts[user] || 0;
+
+  // Update tab badge
+  if (openTabs[user]) {
+    const tab = openTabs[user];
+    // remove old badge
+    const oldBadge = tab.querySelector(".unread-badge");
+    if (oldBadge) oldBadge.remove();
+    if (count > 0) {
+      const badge = document.createElement("span");
+      badge.className = "unread-badge";
+      badge.textContent = count;
+      tab.appendChild(badge);
+    }
+  }
+
+  // Update sidebar badge
+  const userDiv = document.querySelector(`.online-user[data-user="${CSS.escape(user)}"]`);
+  if (userDiv) {
+    // remove existing unread badge in the holder
+    const holder = userDiv.querySelector(".unread-holder");
+    if (holder) {
+      holder.innerHTML = ""; // clear and repopulate
+      if (count > 0) {
+        const b = document.createElement("span");
+        b.className = "unread-badge";
+        b.textContent = count;
+        holder.appendChild(b);
+      }
+    }
+  }
 }
 
 // ----------- INIT -------------
@@ -496,11 +610,9 @@ document.getElementById("logoutBtn").onclick = async ()=>{
   localStorage.removeItem("loggedInUser");
   window.location.href="login.html";
 };
-
-
 </script>
-<script>
 
+<script>
 function changeBackground() {
   console.log("running");
   var notesList2 = document.getElementById("notesList");
@@ -509,9 +621,6 @@ function changeBackground() {
 
   notesList2.style.backgroundColor = backgroundColorVARValue;
 }
-
-
 </script>
 </body>
 </html>
-
