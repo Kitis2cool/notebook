@@ -37,8 +37,27 @@
     <button onclick="login()">Login</button>
     <button onclick="createAccount()">Sign Up</button>
 
-    <script>
-        function createAccount() {
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+        import { 
+            getFirestore, doc, getDoc, setDoc 
+        } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+        // 🔥 Firebase config (same as your chat page)
+        const firebaseConfig = {
+            apiKey: "AIzaSyBXhiyGWev_pgR04Xqwq-09cE_oyrLWnU8",
+            authDomain: "kitisnotebook.firebaseapp.com",
+            projectId: "kitisnotebook",
+            storageBucket: "kitisnotebook.firebasestorage.app",
+            messagingSenderId: "450680847245",
+            appId: "1:450680847245:web:2e4ebb71ccd3a7920bdbc4",
+            measurementId: "G-W3ZVV6N6KK"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        async function createAccount() {
             const username = document.getElementById("usernameField").value.trim();
             const password = document.getElementById("passwordField").value;
 
@@ -47,28 +66,37 @@
                 return;
             }
 
-            if (localStorage.getItem(`user_${username}`)) {
+            const userRef = doc(db, "users", username);
+            const userSnap = await getDoc(userRef);
+
+            if (userSnap.exists()) {
                 alert("Username already exists. Choose another.");
                 return;
             }
 
-            localStorage.setItem(`user_${username}`, password);
+            await setDoc(userRef, { username, password });
             alert("Account created! You can now login.");
             document.getElementById("usernameField").value = "";
             document.getElementById("passwordField").value = "";
         }
 
-        function login() {
+        async function login() {
             const username = document.getElementById("usernameField").value.trim();
             const password = document.getElementById("passwordField").value;
-            const storedPassword = localStorage.getItem(`user_${username}`);
 
-            if (storedPassword && storedPassword === password) {
-                localStorage.setItem("loggedInUser", username);
-                window.location.href = "index.html";
+            const userRef = doc(db, "users", username);
+            const userSnap = await getDoc(userRef);
+
+            if (userSnap.exists()) {
+                const data = userSnap.data();
+                if (data.password === password) {
+                    localStorage.setItem("loggedInUser", username);
+                    window.location.href = "index.html";
+                } else {
+                    alert("Wrong password.");
+                }
             } else {
-                alert("Wrong username or password.");
-                document.getElementById("passwordField").value = "";
+                alert("User not found.");
             }
         }
 
