@@ -303,8 +303,8 @@ body {
 
   <br><br>
   <input type="color" id="bgSelector" onchange="changeBackground()">
-  <p><span style="font-weight: bolder;">Updates/News:</span><br><br>
-  Now with profile pictures and profanity filter!<br><br>
+  <p><span style="font-weight: bolder; color:gold">Updates/News:</span><br><br>
+  Now with profile pictures and profanity filter (Give it a go) plus a character limit!<br><br>
   I tried adding bio's and statuses but it was a little too hard.
   </p>
 </div>
@@ -336,12 +336,12 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 // Admin & login
-const ADMIN_USER = "kitis" && "Fartnugget2009" && "Riley";
+const ADMIN_USER = "kitis";
 let isAdmin = false;
 const loggedInUser = localStorage.getItem("loggedInUser");
 if (!loggedInUser) window.location.href = "login.html";
 document.getElementById("username").value = loggedInUser;
-if (loggedInUser === ADMIN_USER) isAdmin = true;
+if (loggedInUser === ADMIN_USER || "Riley") isAdmin = true;
 
 // Unread tracking
 let unreadCounts = {};
@@ -362,7 +362,6 @@ setInterval(async () => {
 onSnapshot(doc(db, "profiles", loggedInUser), snap => {
   if (snap.exists()) {
     const data = snap.data();
-    console.log("Profile updated:", data);
     const userDiv = document.querySelector(`.online-user[data-user="${CSS.escape(loggedInUser)}"]`);
     if (userDiv) {
       userDiv.querySelector("img").src = data.avatar || `https://i.pravatar.cc/30?u=${loggedInUser}`;
@@ -381,7 +380,7 @@ function formatLastSeen(ms) {
 }
 
 // Profanity filter
-const bannedWords = ["fuck","nigger","nigga", "bitch", "pussy"];
+const bannedWords = ["fuck", "bitch", "pussy", "cock", "cum", "slut", "whore", "france", "french", "british", "asshole", "dick", "cunt", "bastard", "motherfucker", "nigger", "nigga", "chink", "spic", "fag", "faggot", "retard",];
 function filterProfanity(text){
   let filtered = text;
   bannedWords.forEach(w => {
@@ -531,16 +530,29 @@ let allMessages = [];
 async function sendMessage() {
   let text = document.getElementById("noteInput").value.trim();
   if (!text) return;
+
+  const maxLength = 350;
+  if (text.length > maxLength) {
+    alert(`Message too long! Limit is ${maxLength} characters.`);
+    return;
+  }
+
   text = filterProfanity(text); // filter
   await addDoc(collection(db, "messages"), { 
     text, from: loggedInUser, to: activeTab, timestamp: Date.now() 
   });
-  document.getElementById("noteInput").value="";
+
+  document.getElementById("noteInput").value = "";
 }
+
 document.getElementById("sendBtn").onclick = sendMessage;
-document.getElementById("noteInput").addEventListener("keydown", e=>{
-  if(e.key==="Enter"){ e.preventDefault(); sendMessage(); }
+document.getElementById("noteInput").addEventListener("keydown", e => {
+  if (e.key === "Enter") { 
+    e.preventDefault(); 
+    sendMessage(); 
+  }
 });
+
 
 // One snapshot listener
 const q = query(collection(db,"messages"), orderBy("timestamp"));
@@ -614,7 +626,6 @@ function renderMessage(docSnap, data){
 // Unread badges
 function updateUnreadBadge(user) {
   const count = unreadCounts[user] || 0;
-  console.log(`Updating badge for ${user}, count = ${count}`);
 
   const formatCount = (count) => count > 99 ? "99+" : count;
 
@@ -635,41 +646,39 @@ function updateUnreadBadge(user) {
       if (!badge) {
         badge = createUnreadBadge(count);
         tab.appendChild(badge);
-        console.log("Added badge to tab:", user);
       } else {
         badge.textContent = formatCount(count);
       }
     } else if (badge) {
       badge.remove();
-      console.log("Removed badge from tab:", user);
     }
   }
 
-  // --- Update online users list ---
-  const userDiv = document.querySelector(`.online-user[data-user="${CSS.escape(user)}"]`);
-  if (userDiv) {
-    const holder = userDiv.querySelector(".unread-holder");
-    if (holder) {
-      let badge = holder.querySelector(".unread-badge");
+// --- Update online users list ---
+if (user === "all") return; // skip "all"
 
-      if (count > 0) {
-        if (!badge) {
-          badge = createUnreadBadge(count);
-          holder.appendChild(badge);
-          console.log("Added badge to online list:", user);
-        } else {
-          badge.textContent = formatCount(count);
-        }
-      } else if (badge) {
-        badge.remove();
-        console.log("Removed badge from online list:", user);
+const userDiv = document.querySelector(`.online-user[data-user="${CSS.escape(user)}"]`);
+if (userDiv) {
+  const holder = userDiv.querySelector(".unread-holder");
+  if (holder) {
+    let badge = holder.querySelector(".unread-badge");
+
+    if (count > 0) {
+      if (!badge) {
+        badge = createUnreadBadge(count);
+        holder.appendChild(badge);
+      } else {
+        badge.textContent = formatCount(count);
       }
-    } else {
-      console.warn("No .unread-holder inside", userDiv);
+    } else if (badge) {
+      badge.remove();
     }
   } else {
-    console.warn("No .online-user div found for", user);
+    console.warn("No .unread-holder inside", userDiv);
   }
+} else {
+  console.warn("No .online-user div found for", user);
+}
 }
 
 // Init
@@ -697,4 +706,3 @@ function changeBackground() {
 </script>
 </body>
 </html>
-
