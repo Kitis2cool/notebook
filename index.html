@@ -341,7 +341,7 @@ let isAdmin = false;
 const loggedInUser = localStorage.getItem("loggedInUser");
 if (!loggedInUser) window.location.href = "login.html";
 document.getElementById("username").value = loggedInUser;
-if (loggedInUser === ADMIN_USER || "Riley") isAdmin = true;
+if (loggedInUser === ADMIN_USER) isAdmin = true;
 
 // Unread tracking
 let unreadCounts = {};
