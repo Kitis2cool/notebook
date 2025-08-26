@@ -1,0 +1,11 @@
+[
+  {
+    "origin": [
+      "http://127.0.0.1:5500",
+      "https://kitisnote.netlify.app"
+    ],
+    "method": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    "responseHeader": ["Content-Type", "Authorization", "x-goog-meta-*"],
+    "maxAgeSeconds": 3600
+  }
+]
