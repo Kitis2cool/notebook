@@ -336,18 +336,20 @@ body {
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
 import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, query, orderBy, setDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-storage.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBXhiyGWev_pgR04Xqwq-09cE_oyrLWnU8",
   authDomain: "kitisnotebook.firebaseapp.com",
   projectId: "kitisnotebook",
-  storageBucket: "kitisnotebook.firebasestorage.app",
+  storageBucket: "kitisnotebook.appspot.app",
   messagingSenderId: "450680847245",
   appId: "1:450680847245:web:2e4ebb71ccd3a7920bdbc4",
   measurementId: "G-W3ZVV6N6KK"
 };
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const storage = getStorage(app);
 
 // Admin & login
 const ADMIN_USER = "kitis";
@@ -637,28 +639,54 @@ function displayMessages() {
   notesList.scrollTop = notesList.scrollHeight;
 }
 
-
-function renderMessage(docSnap, data) {
-    if (data.fileURL) {
-  const fileLink = document.createElement("a");
-  fileLink.href = data.fileURL;
-  fileLink.target = "_blank";
-  fileLink.textContent = data.fileName || "File";
-  fileLink.style.color = "#9e363a";
-  div.appendChild(fileLink);
+function isImageFile(fileName = "") {
+  return /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(fileName);
 }
 
+function renderMessage(docSnap, data) {
   const div = document.createElement("div");
   div.className = "note-item";
+
   const avatarImg = document.createElement("img");
   avatarImg.src = `https://i.pravatar.cc/30?u=${data.from}`;
   div.appendChild(avatarImg);
+
   const content = document.createElement("span");
-  content.textContent = `${data.from}: ${data.text}`;
+  content.textContent = `${data.from}: ${data.text || (data.fileName ? data.fileName : "")}`;
   div.appendChild(content);
+
+  // Attach file link/preview if present
+  if (data.fileURL) {
+    const sep = document.createTextNode(" ");
+    div.appendChild(sep);
+
+    const fileLink = document.createElement("a");
+    fileLink.href = data.fileURL;
+    fileLink.target = "_blank";
+    fileLink.rel = "noopener noreferrer";
+    fileLink.textContent = data.fileName || "File";
+    fileLink.style.color = "#ffcc00";
+    fileLink.style.textDecoration = "underline";
+    div.appendChild(fileLink);
+
+    if (isImageFile(data.fileName)) {
+      const preview = document.createElement("img");
+      preview.src = data.fileURL;
+      preview.alt = data.fileName || "attachment";
+      preview.style.width = "120px";
+      preview.style.height = "auto";
+      preview.style.borderRadius = "8px";
+      preview.style.marginLeft = "8px";
+      preview.style.cursor = "pointer";
+      preview.onclick = () => window.open(data.fileURL, "_blank");
+      div.appendChild(preview);
+    }
+  }
+
   if (data.from === ADMIN_USER) div.classList.add("admin-message");
   if (data.from === loggedInUser) div.classList.add("own-message");
   else if (data.to === loggedInUser && data.to !== "all") div.classList.add("private-message");
+
   if (data.from === loggedInUser || isAdmin) {
     const delBtn = document.createElement("button");
     delBtn.textContent = "Delete";
@@ -712,40 +740,49 @@ document.getElementById("logoutBtn").onclick = async ()=>{
   localStorage.removeItem("loggedInUser");
   window.location.href="login.html";
 };
-</script>
 
-<script>
-function changeBackground() {
-  const notesList2 = document.getElementById("notesList");
-  const backgroundColorVAR = document.getElementById("bgSelector");
-  const backgroundColorVARValue = backgroundColorVAR.value;
-  notesList2.style.backgroundColor = backgroundColorVARValue;
-}
+// === Attachments (moved into module, modular API) ===
 const fileInput = document.getElementById("fileInput");
 const attachBtn = document.getElementById("attachBtn");
-
 attachBtn.onclick = () => fileInput.click();
 
 fileInput.onchange = async () => {
   const file = fileInput.files[0];
   if (!file) return;
-  
-  const storageRef = firebase.storage().ref(`uploads/${loggedInUser}/${Date.now()}_${file.name}`);
-  await storageRef.put(file);
-  const url = await storageRef.getDownloadURL();
-  
-  await addDoc(collection(db, "messages"), {
-    text: "",
-    from: loggedInUser,
-    to: activeTab,
-    timestamp: Date.now(),
-    fileURL: url,
-    fileName: file.name
-  });
-  
-  fileInput.value = "";
+  try {
+    const path = `uploads/${loggedInUser}/${Date.now()}_${file.name}`;
+    const fileRef = ref(storage, path);
+    await uploadBytes(fileRef, file);
+    const url = await getDownloadURL(fileRef);
+
+    await addDoc(collection(db, "messages"), {
+      text: "",
+      from: loggedInUser,
+      to: activeTab,
+      timestamp: Date.now(),
+      fileURL: url,
+      fileName: file.name
+    });
+  } catch (err) {
+    console.error("Upload failed", err);
+    alert("Upload failed. Check console for details.");
+  } finally {
+    fileInput.value = "";
+  }
 };
 
+// Keep inline onchange working
+window.changeBackground = function changeBackground() {
+  const notesList2 = document.getElementById("notesList");
+  const backgroundColorVAR = document.getElementById("bgSelector");
+  const backgroundColorVARValue = backgroundColorVAR.value;
+  notesList2.style.backgroundColor = backgroundColorVARValue;
+};
+
+// --- Lightweight runtime checks ("tests") ---
+console.assert(typeof getStorage === "function", "Firebase Storage import missing");
+console.assert(storage, "Storage not initialized");
+console.assert(typeof window.changeBackground === "function", "changeBackground not attached to window");
 </script>
 </body>
 </html>
