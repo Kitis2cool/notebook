@@ -281,10 +281,12 @@ body {
 </div>
 
 <script type="module">
+/* ===== Firebase ===== */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
 import {
   getFirestore, collection, addDoc, onSnapshot,
-  deleteDoc, doc, query, orderBy, setDoc
+  deleteDoc, doc, query, orderBy, setDoc,
+  updateDoc, arrayUnion, arrayRemove
 } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
 /* ===== Firebase (Spark-plan friendly: no Storage) ===== */
@@ -308,11 +310,34 @@ if (!loggedInUser) window.location.href = "login.html";
 document.getElementById("username").value = loggedInUser;
 if (loggedInUser === ADMIN_USER) isAdmin = true;
 
-/* ===== Unread tracking ===== */
-let unreadCounts = {};
-let processedMessageIds = new Set();
+/* ===== Helpers ===== */
+const looksLikeUrl = (text = "") => /^https?:\/\/\S+$/i.test(text.trim());
+const isImageUrl = (str = "") => /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(str.split(/[?#]/)[0]);
+const isGroupKey = (k) => typeof k === "string" && k.startsWith("group:");
+const groupNameFromKey = (k) => (k.split(":")[1] || "").trim();
+const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
 
-/* ===== Online users ===== */
+function formatLastSeen(ms) {
+  const seconds = Math.floor(ms / 1000);
+  if (seconds < 60) return "just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.floor(minutes / 60);
+  return `${hours} hr ago`;
+}
+
+/* ===== Profanity filter ===== */
+const bannedWords = ["fuck", "bitch", "pussy", "cock", "cum", "slut", "whore", "france", "french", "british", "asshole", "dick", "cunt", "bastard", "motherfucker", "nigger", "nigga", "chink", "spic", "fag", "faggot", "retard"];
+function filterProfanity(text) {
+  let filtered = text;
+  bannedWords.forEach((w) => {
+    const regex = new RegExp(w, "gi");
+    filtered = filtered.replace(regex, "****");
+  });
+  return filtered;
+}
+
+/* ===== Presence ===== */
 const onlineUsersList = document.getElementById("onlineUsersList");
 
 async function goOnline() {
@@ -320,7 +345,7 @@ async function goOnline() {
   await setDoc(userRef, {
     username: loggedInUser,
     lastActive: Date.now(),
-    avatar: "https://i.pravatar.cc/30?u=" + loggedInUser
+    avatar: "https://i.pravatar.cc/30?u=" + loggedInUser,
   });
 }
 goOnline();
@@ -331,56 +356,35 @@ setInterval(async () => {
     {
       username: loggedInUser,
       lastActive: Date.now(),
-      avatar: "https://i.pravatar.cc/30?u=" + loggedInUser
+      avatar: "https://i.pravatar.cc/30?u=" + loggedInUser,
     },
     { merge: true }
   );
 }, 30000);
 
-import { doc as fdoc, onSnapshot as fsnap } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
-fsnap(fdoc(db, "profiles", loggedInUser), snap => {
-  if (snap.exists()) {
-    const data = snap.data();
-    const userDiv = document.querySelector(`.online-user[data-user="${CSS.escape(loggedInUser)}"]`);
-    if (userDiv) {
-      userDiv.querySelector("img").src = data.avatar || `https://i.pravatar.cc/30?u=${loggedInUser}`;
-      const label = userDiv.querySelector("span");
-      if (label) label.textContent = `${loggedInUser} - ${data.status || ""}`;
-    }
-  }
+/* Optional profile live updates for current user avatar/status (guarded) */
+onSnapshot(doc(db, "profiles", loggedInUser), (snap) => {
+  if (!snap.exists()) return;
+  const data = snap.data();
+  const userDiv = document.querySelector(`.online-user[data-user="${CSS.escape(loggedInUser)}"]`);
+  if (!userDiv) return; // we don't render self in list
+  const img = userDiv.querySelector("img");
+  if (img) img.src = data.avatar || `https://i.pravatar.cc/30?u=${loggedInUser}`;
+  const label = userDiv.querySelector("span");
+  if (label) label.textContent = `${loggedInUser} - ${data.status || ""}`;
 });
 
-function formatLastSeen(ms) {
-  const seconds = Math.floor(ms/1000);
-  if (seconds < 60) return "just now";
-  const minutes = Math.floor(seconds/60);
-  if (minutes < 60) return minutes + " min ago";
-  const hours = Math.floor(minutes/60);
-  return hours + " hr ago";
-}
-
-/* ===== Profanity filter ===== */
-const bannedWords = ["fuck", "bitch", "pussy", "cock", "cum", "slut", "whore", "france", "french", "british", "asshole", "dick", "cunt", "bastard", "motherfucker", "nigger", "nigga", "chink", "spic", "fag", "faggot", "retard"];
-function filterProfanity(text){
-  let filtered = text;
-  bannedWords.forEach(w => {
-    const regex = new RegExp(w, "gi");
-    filtered = filtered.replace(regex, "****");
-  });
-  return filtered;
-}
-
-/* ===== Render online users ===== */
-onSnapshot(collection(db, "onlineUsers"), snapshot => {
+/* ===== Sidebar: Online Users (and All Chat) ===== */
+onSnapshot(collection(db, "onlineUsers"), (snapshot) => {
   onlineUsersList.innerHTML = "";
   const now = Date.now();
   const usersMap = {};
-  snapshot.forEach(docSnap => {
+  snapshot.forEach((docSnap) => {
     const data = docSnap.data();
     const user = data.username;
     const lastActive = data.lastActive || 0;
     const avatar = data.avatar || "https://i.pravatar.cc/30?u=" + user;
-    if (user === loggedInUser) return;
+    if (user === loggedInUser) return; // hide self
     usersMap[user] = { user, lastActive, avatar };
   });
 
@@ -392,10 +396,11 @@ onSnapshot(collection(db, "onlineUsers"), snapshot => {
     return b.lastActive - a.lastActive;
   });
 
-  // "All Chat" pseudo-user
+  // "All Chat" pseudo-user row
   const allDiv = document.createElement("div");
   allDiv.className = "online-user";
   allDiv.dataset.user = "all";
+
   const leftAll = document.createElement("div");
   leftAll.style.display = "flex";
   leftAll.style.flexDirection = "column";
@@ -403,12 +408,15 @@ onSnapshot(collection(db, "onlineUsers"), snapshot => {
   labelAll.textContent = "All Chat";
   leftAll.appendChild(labelAll);
   allDiv.appendChild(leftAll);
+
   const rightAll = document.createElement("div");
-  rightAll.style.display = "flex"; rightAll.style.alignItems = "center";
+  rightAll.style.display = "flex";
+  rightAll.style.alignItems = "center";
   const unreadHolderAll = document.createElement("span");
   unreadHolderAll.className = "unread-holder";
   rightAll.appendChild(unreadHolderAll);
   allDiv.appendChild(rightAll);
+
   allDiv.onclick = () => openTab("all");
   onlineUsersList.prepend(allDiv);
   updateUnreadBadge("all");
@@ -420,7 +428,8 @@ onSnapshot(collection(db, "onlineUsers"), snapshot => {
     div.dataset.user = user;
 
     const left = document.createElement("div");
-    left.style.display = "flex"; left.style.flexDirection = "column";
+    left.style.display = "flex";
+    left.style.flexDirection = "column";
     const label = document.createElement("span");
     label.textContent = user + (now - lastActive <= 60 * 1000 ? " (online)" : "");
     left.appendChild(label);
@@ -433,7 +442,8 @@ onSnapshot(collection(db, "onlineUsers"), snapshot => {
     div.appendChild(left);
 
     const right = document.createElement("div");
-    right.style.display = "flex"; right.style.alignItems = "center";
+    right.style.display = "flex";
+    right.style.alignItems = "center";
     if (user === ADMIN_USER) {
       const badge = document.createElement("span");
       badge.className = "admin-badge";
@@ -457,55 +467,243 @@ onSnapshot(collection(db, "onlineUsers"), snapshot => {
   });
 });
 
+/* ===== Groups: UI + Data ===== */
+
+// Build Groups section once (no HTML changes needed)
+const sidebar = document.getElementById("sidebar");
+const groupsHeader = document.createElement("h3");
+groupsHeader.textContent = "Groups";
+const groupsList = document.createElement("div");
+groupsList.id = "groupsList";
+
+const newGroupBtn = document.createElement("button");
+newGroupBtn.id = "newGroupBtn";
+newGroupBtn.textContent = "+ New Group";
+newGroupBtn.style.cssText = `
+  width: 100%; padding: 12px; margin-top: 8px; border: none;
+  background: linear-gradient(90deg, #386fa4, #2d4a7c); color: #fff;
+  font-weight: bold; border-radius: 8px; cursor: pointer;
+  transition: transform .2s, box-shadow .2s;
+`;
+newGroupBtn.onmouseenter = () => (newGroupBtn.style.boxShadow = "0 3px 10px rgba(56,111,164,0.4)");
+newGroupBtn.onmouseleave = () => (newGroupBtn.style.boxShadow = "");
+
+// Insert right after the online users list
+onlineUsersList.insertAdjacentElement("afterend", groupsHeader);
+groupsHeader.insertAdjacentElement("afterend", groupsList);
+groupsList.insertAdjacentElement("afterend", newGroupBtn);
+
+let myGroups = new Set();                 // e.g., "group:friends"
+let groupsMeta = {};                      // key -> { id, members, createdBy, createdAt }
+
+function parseMembers(raw) {
+  if (!raw) return [];
+  const arr = raw.split(",").map(s => s.trim()).filter(Boolean);
+  // normalize: keep original case for display, Firestore keys are usernames as-is
+  const unique = Array.from(new Set(arr)).filter(u => u.length <= 32);
+  return unique;
+}
+
+newGroupBtn.onclick = async () => {
+  let name = prompt("Enter a group name (letters, numbers, -, _ ; max 30 chars):");
+  if (!name) return;
+  name = name.trim().toLowerCase().replace(/[^\w-]+/g, "-").replace(/^-+|-+$/g, "");
+  if (!name) return alert("Invalid name.");
+  if (name.length > 30) name = name.slice(0, 30);
+
+  const extra = prompt("Add members (comma-separated usernames), optional:");
+  const members = parseMembers(extra).filter(u => u !== loggedInUser);
+  try {
+    // create or merge, always ensure creator is a member
+    await setDoc(doc(db, "groups", name), {
+      members: [loggedInUser],
+      createdBy: loggedInUser,
+      createdAt: Date.now()
+    }, { merge: true });
+    if (members.length) {
+      await updateDoc(doc(db, "groups", name), { members: arrayUnion(...members) });
+    }
+    openTab(`group:${name}`);
+  } catch (e) {
+    console.error(e);
+    alert("Could not create group. Check console for details.");
+  }
+};
+
+// Live groups list
+onSnapshot(collection(db, "groups"), (snap) => {
+  groupsList.innerHTML = "";
+  myGroups = new Set();
+  groupsMeta = {};
+
+  snap.forEach((docSnap) => {
+    const g = docSnap.data();
+    const id = docSnap.id;
+    const key = `group:${id}`;
+    if (!Array.isArray(g.members)) return;
+
+    if (g.members.includes(loggedInUser)) {
+      myGroups.add(key);
+      groupsMeta[key] = { id, ...g };
+
+      const div = document.createElement("div");
+      div.className = "online-user";
+      div.dataset.user = key;
+
+      const left = document.createElement("div");
+      left.style.display = "flex";
+      left.style.flexDirection = "column";
+      const label = document.createElement("span");
+      label.textContent = `#${id}`;
+      left.appendChild(label);
+
+      const small = document.createElement("span");
+      small.className = "last-seen";
+      small.textContent = `${g.members.length} member${g.members.length === 1 ? "" : "s"}`;
+      left.appendChild(small);
+      div.appendChild(left);
+
+      const right = document.createElement("div");
+      right.style.display = "flex";
+      right.style.alignItems = "center";
+
+      const unreadHolder = document.createElement("span");
+      unreadHolder.className = "unread-holder";
+      right.appendChild(unreadHolder);
+
+      // Manage buttons
+      const mkBtn = (txt, title) => {
+        const b = document.createElement("button");
+        b.textContent = txt;
+        b.title = title;
+        b.style.cssText = "margin-left:6px;border:none;background:#4f5f76;color:#fff;padding:2px 6px;font-size:12px;border-radius:6px;cursor:pointer;";
+        b.onmouseenter = () => b.style.background = "#6b7a98";
+        b.onmouseleave = () => b.style.background = "#4f5f76";
+        return b;
+      };
+
+      const inviteBtn = mkBtn("＋", "Invite members");
+      inviteBtn.onclick = async (e) => {
+        e.stopPropagation();
+        const raw = prompt("Usernames to invite (comma-separated):");
+        const toAdd = parseMembers(raw).filter(Boolean);
+        if (!toAdd.length) return;
+        try {
+          await updateDoc(doc(db, "groups", id), { members: arrayUnion(...toAdd) });
+        } catch (err) {
+          console.error(err);
+          alert("Failed to invite.");
+        }
+      };
+      right.appendChild(inviteBtn);
+
+      const leaveBtn = mkBtn("⎋", "Leave group");
+      leaveBtn.onclick = async (e) => {
+        e.stopPropagation();
+        if (!confirm(`Leave #${id}?`)) return;
+        try {
+          await updateDoc(doc(db, "groups", id), { members: arrayRemove(loggedInUser) });
+          if (activeTab === key) {
+            activeTab = "all";
+            highlightActiveTab();
+            displayMessages();
+          }
+        } catch (err) {
+          console.error(err);
+          alert("Failed to leave.");
+        }
+      };
+      right.appendChild(leaveBtn);
+
+      const canDelete = (g.createdBy === loggedInUser) || isAdmin;
+      if (canDelete) {
+        const delBtn = mkBtn("🗑", "Delete group");
+        delBtn.onclick = async (e) => {
+          e.stopPropagation();
+          if (!confirm(`Delete #${id} for everyone? This removes history (within retention window).`)) return;
+          try {
+            await deleteDoc(doc(db, "groups", id));
+            if (activeTab === key) {
+              activeTab = "all";
+              highlightActiveTab();
+              displayMessages();
+            }
+          } catch (err) {
+            console.error(err);
+            alert("Failed to delete group.");
+          }
+        };
+        right.appendChild(delBtn);
+      }
+
+      div.appendChild(right);
+      div.onclick = () => openTab(key);
+
+      groupsList.appendChild(div);
+      updateUnreadBadge(key);
+    }
+  });
+});
+
 /* ===== Tabs ===== */
 const tabsContainer = document.getElementById("tabs");
 let openTabs = {};
 let activeTab = "all";
 
-function openTab(user) {
-  if (!openTabs[user]) {
-    const tab = document.createElement("div");
-    tab.className = "tab" + (user===activeTab ? " active" : "");
-    tab.dataset.user = user;
-    tab.textContent = user==="all" ? "All Chat" : user;
+// Ensure a human-friendly label
+function labelForTab(key) {
+  if (key === "all") return "All Chat";
+  if (isGroupKey(key)) return `#${groupNameFromKey(key)}`;
+  return key;
+}
 
-    if (user !== "all") {
+function openTab(key) {
+  if (!openTabs[key]) {
+    const tab = document.createElement("div");
+    tab.className = "tab" + (key === activeTab ? " active" : "");
+    tab.dataset.user = key;
+    tab.textContent = labelForTab(key);
+
+    if (key !== "all") {
       const closeBtn = document.createElement("span");
       closeBtn.textContent = "✖";
       closeBtn.className = "close-btn";
       closeBtn.onclick = (e) => {
         e.stopPropagation();
         tabsContainer.removeChild(tab);
-        delete openTabs[user];
-        if (activeTab === user) { activeTab = "all"; highlightActiveTab(); displayMessages(); }
+        delete openTabs[key];
+        if (activeTab === key) {
+          activeTab = "all";
+          highlightActiveTab();
+          displayMessages();
+        }
       };
       tab.appendChild(closeBtn);
     }
 
     tab.onclick = () => {
-      activeTab = user;
-      if (user !== "all" && unreadCounts[user]) {
-        unreadCounts[user] = 0;
-        updateUnreadBadge(user);
-      }
+      activeTab = key;
+      if (unreadCounts[key]) unreadCounts[key] = 0;
+      if (unreadMessageIds[key]) unreadMessageIds[key].clear();
+      updateUnreadBadge(key);
       highlightActiveTab();
       displayMessages();
     };
 
-    openTabs[user] = tab;
+    openTabs[key] = tab;
     tabsContainer.appendChild(tab);
-    updateUnreadBadge(user);
+    updateUnreadBadge(key);
   }
-  activeTab = user;
-  if (user !== "all" && unreadCounts[user]) {
-    unreadCounts[user] = 0;
-    updateUnreadBadge(user);
-  }
+
+  activeTab = key;
+  if (unreadCounts[key]) unreadCounts[key] = 0;
+  if (unreadMessageIds[key]) unreadMessageIds[key].clear();
+  updateUnreadBadge(key);
   highlightActiveTab();
   displayMessages();
 }
 function highlightActiveTab() {
-  Object.values(openTabs).forEach(tab => tab.classList.remove("active"));
+  Object.values(openTabs).forEach((tab) => tab.classList.remove("active"));
   if (openTabs[activeTab]) openTabs[activeTab].classList.add("active");
 }
 
@@ -513,17 +711,16 @@ function highlightActiveTab() {
 const notesList = document.getElementById("notesList");
 let allMessages = [];
 
-/* Helpers for URLs */
-function looksLikeUrl(text="") { return /^https?:\/\/\S+$/i.test(text.trim()); }
-function isImageUrl(str="") {
-  const clean = str.split("?")[0].split("#")[0];
-  return /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(clean);
-}
-
 /* Send message */
 async function sendMessage() {
   let text = document.getElementById("noteInput").value.trim();
   if (!text) return;
+
+  // Prevent sending to a group you are not in (edge case)
+  if (isGroupKey(activeTab) && !myGroups.has(activeTab)) {
+    alert("You are not a member of this group.");
+    return;
+  }
 
   // If user pasted a URL, treat it as an attachment (still free)
   if (looksLikeUrl(text)) {
@@ -533,7 +730,7 @@ async function sendMessage() {
       to: activeTab,
       timestamp: Date.now(),
       fileURL: text,
-      fileName: text.split("/").pop().split("?")[0]
+      fileName: text.split("/").pop().split("?")[0],
     });
     document.getElementById("noteInput").value = "";
     return;
@@ -545,12 +742,17 @@ async function sendMessage() {
     return;
   }
   text = filterProfanity(text);
-  await addDoc(collection(db, "messages"), { text, from: loggedInUser, to: activeTab, timestamp: Date.now() });
+  await addDoc(collection(db, "messages"), {
+    text,
+    from: loggedInUser,
+    to: activeTab,
+    timestamp: Date.now(),
+  });
   document.getElementById("noteInput").value = "";
 }
 
 document.getElementById("sendBtn").onclick = sendMessage;
-document.getElementById("noteInput").addEventListener("keydown", e => {
+document.getElementById("noteInput").addEventListener("keydown", (e) => {
   if (e.key === "Enter") {
     e.preventDefault();
     sendMessage();
@@ -558,14 +760,15 @@ document.getElementById("noteInput").addEventListener("keydown", e => {
 });
 
 /* Messages listener (auto-delete after 1 hour) */
-const q = query(collection(db,"messages"), orderBy("timestamp"));
-onSnapshot(q, async snapshot => {
+const q = query(collection(db, "messages"), orderBy("timestamp"));
+onSnapshot(q, async (snapshot) => {
   allMessages = [];
   const now = Date.now();
   for (const docSnap of snapshot.docs) {
     const data = docSnap.data();
-    if (now - data.timestamp > 60*60*1000) {
-      await deleteDoc(doc(db,"messages", docSnap.id));
+    if (!data || typeof data.timestamp !== "number") continue;
+    if (now - data.timestamp > 60 * 60 * 1000) {
+      await deleteDoc(doc(db, "messages", docSnap.id));
       continue;
     }
     allMessages.push({ id: docSnap.id, data });
@@ -573,32 +776,42 @@ onSnapshot(q, async snapshot => {
   displayMessages();
 });
 
-/* Track unread counts */
-let unreadMessageIds = {}; // { user: Set<messageId> }
+/* Unread tracking */
+let unreadCounts = {};
+let unreadMessageIds = {}; // { key: Set<messageId> }
 
 function displayMessages() {
   notesList.innerHTML = "";
 
   allMessages.forEach(({ id, data }) => {
     const isBroadcast = data.to === "all";
-    const isPrivateToMe = data.to === loggedInUser && data.from !== loggedInUser && !isBroadcast;
+    const isDMToMe =
+      data.to === loggedInUser && data.from !== loggedInUser && !isBroadcast && !isGroupKey(data.to);
+    const isGroupMsg = isGroupKey(data.to);
 
-    if (
+    const shouldShow =
       (activeTab === "all" && isBroadcast) ||
-      (activeTab !== "all" && (
+      (isGroupKey(activeTab) && data.to === activeTab) ||
+      (!isGroupKey(activeTab) && activeTab !== "all" && (
         (data.from === activeTab && data.to === loggedInUser) ||
         (data.to === activeTab && data.from === loggedInUser)
-      ))
-    ) {
+      ));
+
+    if (shouldShow) {
       renderMessage({ id }, data);
+      // If we just viewed it, clear unread bookkeeping for this key
+      const key = isBroadcast ? "all" : data.to;
+      if (unreadMessageIds[key]) unreadMessageIds[key].delete(id);
     } else {
-      if (isPrivateToMe) {
+      // Count unread for DMs to me (not my own)
+      if (isDMToMe) {
         if (!unreadMessageIds[data.from]) unreadMessageIds[data.from] = new Set();
         if (!unreadMessageIds[data.from].has(id)) {
           unreadMessageIds[data.from].add(id);
           unreadCounts[data.from] = (unreadCounts[data.from] || 0) + 1;
         }
       }
+      // Count unread for broadcast when I'm not on All and it's not my own
       if (isBroadcast && activeTab !== "all" && data.from !== loggedInUser) {
         if (!unreadMessageIds["all"]) unreadMessageIds["all"] = new Set();
         if (!unreadMessageIds["all"].has(id)) {
@@ -606,10 +819,18 @@ function displayMessages() {
           unreadCounts["all"] = (unreadCounts["all"] || 0) + 1;
         }
       }
+      // Count unread for groups I'm in (not my own)
+      if (isGroupMsg && myGroups.has(data.to) && data.from !== loggedInUser && activeTab !== data.to) {
+        if (!unreadMessageIds[data.to]) unreadMessageIds[data.to] = new Set();
+        if (!unreadMessageIds[data.to].has(id)) {
+          unreadMessageIds[data.to].add(id);
+          unreadCounts[data.to] = (unreadCounts[data.to] || 0) + 1;
+        }
+      }
     }
   });
 
-  Object.keys(unreadCounts).forEach(user => updateUnreadBadge(user));
+  Object.keys(unreadCounts).forEach((key) => updateUnreadBadge(key));
   notesList.scrollTop = notesList.scrollHeight;
 }
 
@@ -623,7 +844,16 @@ function renderMessage(docSnap, data) {
   div.appendChild(avatarImg);
 
   const content = document.createElement("span");
-  content.textContent = `${data.from}: ${data.text || (data.fileName ? data.fileName : "")}`;
+
+  if (isGroupKey(data.to)) {
+    const gName = groupNameFromKey(data.to);
+    content.textContent = `#${gName} • ${data.from}: ${data.text || (data.fileName ? data.fileName : "")}`;
+  } else if (data.to !== "all" && data.to !== loggedInUser && data.from === loggedInUser) {
+    // Sent DM (viewing in DM tab)
+    content.textContent = `${data.from} → ${data.to}: ${data.text || (data.fileName ? data.fileName : "")}`;
+  } else {
+    content.textContent = `${data.from}: ${data.text || (data.fileName ? data.fileName : "")}`;
+  }
   div.appendChild(content);
 
   // File link/preview if present (URL-based, free)
@@ -664,13 +894,14 @@ function renderMessage(docSnap, data) {
     delBtn.onclick = () => deleteDoc(doc(db, "messages", docSnap.id));
     div.appendChild(delBtn);
   }
+
   notesList.appendChild(div);
 }
 
 /* Unread badges */
-function updateUnreadBadge(user) {
-  const count = unreadCounts[user] || 0;
-  const formatCount = (n) => n > 99 ? "99+" : n;
+function updateUnreadBadge(key) {
+  const count = clamp(unreadCounts[key] || 0, 0, 999);
+  const formatCount = (n) => (n > 99 ? "99+" : n);
   function createUnreadBadge(n) {
     const badge = document.createElement("span");
     badge.className = "unread-badge";
@@ -679,20 +910,26 @@ function updateUnreadBadge(user) {
     return badge;
   }
 
-  if (openTabs[user]) {
-    const tab = openTabs[user];
+  // Tabs
+  if (openTabs[key]) {
+    const tab = openTabs[key];
     let badge = tab.querySelector(".unread-badge");
-    if (count > 0) { if (!badge) tab.appendChild(createUnreadBadge(count)); else badge.textContent = formatCount(count); }
-    else if (badge) badge.remove();
+    if (count > 0) {
+      if (!badge) tab.appendChild(createUnreadBadge(count));
+      else badge.textContent = formatCount(count);
+    } else if (badge) badge.remove();
   }
 
-  const userDiv = document.querySelector(`.online-user[data-user="${CSS.escape(user)}"]`);
-  if (userDiv) {
-    const holder = userDiv.querySelector(".unread-holder");
+  // Sidebar rows (users, all, and groups share same selector via data-user)
+  const row = document.querySelector(`.online-user[data-user="${CSS.escape(key)}"]`);
+  if (row) {
+    const holder = row.querySelector(".unread-holder");
     if (holder) {
       let badge = holder.querySelector(".unread-badge");
-      if (count > 0) { if (!badge) holder.appendChild(createUnreadBadge(count)); else badge.textContent = formatCount(count); }
-      else if (badge) badge.remove();
+      if (count > 0) {
+        if (!badge) holder.appendChild(createUnreadBadge(count));
+        else badge.textContent = formatCount(count);
+      } else if (badge) badge.remove();
     }
   }
 }
@@ -703,9 +940,11 @@ openTab("all");
 
 /* Logout */
 document.getElementById("logoutBtn").onclick = async () => {
-  await deleteDoc(doc(db,"onlineUsers",loggedInUser));
+  try {
+    await deleteDoc(doc(db, "onlineUsers", loggedInUser));
+  } catch (_) {}
   localStorage.removeItem("loggedInUser");
-  window.location.href="login.html";
+  window.location.href = "login.html";
 };
 
 /* Attachments on free plan: paste a URL */
@@ -719,20 +958,21 @@ attachBtn.onclick = async () => {
     to: activeTab,
     timestamp: Date.now(),
     fileURL: url,
-    fileName: url.split("/").pop().split("?")[0]
+    fileName: url.split("/").pop().split("?")[0],
   });
 };
 
 /* Inline color picker */
 window.changeBackground = function changeBackground() {
   const notesList2 = document.getElementById("notesList");
-  const backgroundColorVARValue = document.getElementById("bgSelector").value;
-  notesList2.style.backgroundColor = backgroundColorVARValue;
+  const val = document.getElementById("bgSelector").value;
+  notesList2.style.backgroundColor = val;
 };
 
 /* Lightweight runtime checks */
 console.assert(typeof window.changeBackground === "function", "changeBackground not attached to window");
 console.assert(typeof addDoc === "function", "Firestore import missing");
 </script>
+
 </body>
 </html>
