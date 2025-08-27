@@ -389,6 +389,17 @@ body {
 #dontShowNewsBtn {
   border: none; background: #4f5f76; color: #fff; padding: 6px 10px; border-radius: 8px; cursor: pointer; margin-right: 8px;
 }
+.timestamp {
+  font-size: 11px;
+  color: #aaa;
+  margin-left: 6px;
+}
+.typing-indicator {
+  font-size: 12px;
+  color: #5fa8d3;
+  margin-top: 4px;
+}
+
 </style>
 </head>
 <body>
@@ -432,6 +443,9 @@ body {
     <button id="sendBtn">Send</button>
     <button id="attachBtn" title="Paste a URL">📎</button>
     <button id="logoutBtn">Logout</button>
+    <div id="typingIndicator" style="font-size:12px; color:#aaa; margin:4px;"></div>
+
+
   </div>
 </div>
 
@@ -675,6 +689,7 @@ function buildUserRow(user, opts = {}) {
 
   return div;
 }
+
 
 
 function renderFriends() {
@@ -1068,18 +1083,18 @@ function highlightActiveTab() {
   Object.values(openTabs).forEach((tab) => tab.classList.remove("active"));
   if (openTabs[activeTab]) openTabs[activeTab].classList.add("active");
 }
+// --- Unified sendMessage with typing + timestamp support ---
 async function sendMessage() {
   let text = document.getElementById("noteInput").value.trim();
   if (!text) return;
 
-const isDM = !isGroupKey(activeTab) && activeTab !== "all";
-const isFriend = friendsAccepted.has(activeTab);
+  const isDM = !isGroupKey(activeTab) && activeTab !== "all";
+  const isFriend = friendsAccepted.has(activeTab);
 
-if (isDM && !isFriend) {
-  alert("You can only message users you are friends with.");
-  return;
-}
-
+  if (isDM && !isFriend) {
+    alert("You can only message users you are friends with.");
+    return;
+  }
 
   // Prevent posting to groups you left
   if (isGroupKey(activeTab) && !myGroups.has(activeTab)) {
@@ -1106,6 +1121,8 @@ if (isDM && !isFriend) {
       fileName: text.split("/").pop().split("?")[0],
     });
     document.getElementById("noteInput").value = "";
+    // reset typing
+    await setDoc(doc(db, "presence", loggedInUser), { typing: false }, { merge: true });
     return;
   }
 
@@ -1125,7 +1142,11 @@ if (isDM && !isFriend) {
   });
 
   document.getElementById("noteInput").value = "";
+
+  // reset typing after sending
+  await setDoc(doc(db, "presence", loggedInUser), { typing: false }, { merge: true });
 }
+
 
 document.getElementById("toggleSidebar").addEventListener("click", () => {
   const sidebar = document.getElementById("sidebar");
@@ -1295,6 +1316,7 @@ function renderMessage(docSnap, data) {
   }
   div.appendChild(content);
 
+  // --- File attachments (your existing code) ---
   if (data.fileURL) {
     const sep = document.createTextNode(" ");
     div.appendChild(sep);
@@ -1322,10 +1344,23 @@ function renderMessage(docSnap, data) {
     }
   }
 
+  // --- Timestamp (new) ---
+  if (data.timestamp) {
+    const timeSpan = document.createElement("span");
+    timeSpan.className = "timestamp";
+    timeSpan.style.marginLeft = "8px";
+    timeSpan.style.fontSize = "11px";
+    timeSpan.style.color = "#aaa";
+    timeSpan.textContent = timeAgo(data.timestamp); // uses your timeAgo() helper
+    div.appendChild(timeSpan);
+  }
+
+  // --- Styling for special cases ---
   if (data.from === ADMIN_USER) div.classList.add("admin-message");
   if (data.from === loggedInUser) div.classList.add("own-message");
   else if (data.to === loggedInUser && data.to !== "all") div.classList.add("private-message");
 
+  // --- Delete button ---
   if (data.from === ADMIN_USER || data.from === loggedInUser || isAdmin) {
     const delBtn = document.createElement("button");
     delBtn.textContent = "Delete";
@@ -1335,6 +1370,7 @@ function renderMessage(docSnap, data) {
 
   notesList.appendChild(div);
 }
+
 
 function updateUnreadBadge(key) {
   const count = clamp(unreadCounts[key] || 0, 0, 999);
@@ -1420,6 +1456,61 @@ window.addEventListener("keydown", (e) => { if (e.key === "Escape") hideNews(); 
 /* Lightweight runtime checks */
 console.assert(typeof window.changeBackground === "function", "changeBackground not attached to window");
 console.assert(typeof addDoc === "function", "Firestore import missing");
+
+/* === Typing Indicator + Messages with Timestamps === */
+
+// Utility: how long ago
+function timeAgo(ts) {
+  const seconds = Math.floor((Date.now() - ts) / 1000);
+  if (seconds < 60) return "just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes} minute${minutes > 1 ? "s" : ""} ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} hour${hours > 1 ? "s" : ""} ago`;
+  const days = Math.floor(hours / 24);
+  return `${days} day${days > 1 ? "s" : ""} ago`;
+}
+
+const messageInput = document.getElementById("noteInput");  // use the same input as sending
+const typingIndicator = document.getElementById("typingIndicator");
+
+
+let typingTimeout;
+
+// --- Typing state updates ---
+messageInput.addEventListener("input", () => {
+  setDoc(doc(db, "presence", loggedInUser), { typing: true }, { merge: true });
+
+  clearTimeout(typingTimeout);
+  typingTimeout = setTimeout(() => {
+    setDoc(doc(db, "presence", loggedInUser), { typing: false }, { merge: true });
+  }, 3000);
+});
+
+// Watch a friend’s typing status
+function watchFriendTyping(friendUser) {
+  onSnapshot(doc(db, "presence", friendUser), (snap) => {
+    const data = snap.data();
+    if (data?.typing) {
+      typingIndicator.textContent = `${friendUser} is typing...`;
+    } else {
+      typingIndicator.textContent = "";
+    }
+  });
+}
+
+// --- Listen for new messages in a chat ---
+function watchMessages(chatId) {
+  onSnapshot(
+    collection(db, "chats", chatId, "messages"),
+    (snap) => {
+      messagesContainer.innerHTML = "";
+      snap.forEach((docSnap) => {
+        renderMessage(docSnap.data());
+      });
+    }
+  );
+}
 
 </script>
 
