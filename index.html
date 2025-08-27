@@ -394,7 +394,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebas
 import {
   getFirestore, collection, addDoc, onSnapshot,
   deleteDoc, doc, query, orderBy, setDoc,
-  updateDoc, arrayUnion, arrayRemove, serverTimestamp
+  updateDoc, arrayUnion, arrayRemove, serverTimestamp, getDoc
 } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
 /* ===== Firebase (Spark-plan friendly: no Storage) ===== */
@@ -417,6 +417,8 @@ const loggedInUser = localStorage.getItem("loggedInUser");
 if (!loggedInUser) window.location.href = "login.html";
 (document.getElementById("username")).value = loggedInUser;
 if (loggedInUser === ADMIN_USER) isAdmin = true;
+// Ensure my user doc exists so friends can reference me
+await setDoc(doc(db, "users", loggedInUser), { createdAt: Date.now() }, { merge: true });
 
 /* ===== Helpers ===== */
 const looksLikeUrl = (text = "") => /^https?:\/\/\S+$/i.test(text.trim());
@@ -514,13 +516,23 @@ async function sendFriendRequest(toUser) {
 
   const myRef = doc(db, "users", loggedInUser, "friends", toUser);
   const theirRef = doc(db, "users", toUser, "friends", loggedInUser);
+  const targetUserRef = doc(db, "users", toUser);
 
   try {
+    // Ensure the target user exists
+    const targetSnap = await getDoc(targetUserRef);
+    if (!targetSnap.exists()) {
+      await setDoc(targetUserRef, { createdAt: Date.now() });
+    }
+
+    // Create friend request
     await setDoc(myRef, { status: "pending", addedAt: serverTimestamp() });
     await setDoc(theirRef, { status: "requested", addedAt: serverTimestamp() });
+
+    alert(`Friend request sent to ${toUser}!`);
   } catch (e) {
     console.error(e);
-    alert("Could not send request.");
+    alert("Could not send request. Check console for details.");
   }
 }
 
@@ -620,6 +632,7 @@ function buildUserRow(user, opts = {}) {
   unreadHolder.className = "unread-holder";
   right.appendChild(unreadHolder);
 
+
   // Optional trailing buttons
   (opts.buttons || []).forEach((btnDef) => {
     const b = document.createElement("button");
@@ -697,9 +710,8 @@ function renderRequests() {
         { text: "Accept", onClick: () => respondToFriendRequest(user, true) },
         { text: "Reject", onClick: () => respondToFriendRequest(user, false) },
       ],
+      preventRowClick: true // prevents opening chat on click
     });
-    // Override default click to not open chat on the whole row in requests
-    row.onclick = (e) => e.preventDefault();
     requestsList.appendChild(row);
   });
 
@@ -710,11 +722,12 @@ function renderRequests() {
         { text: "Pending…", title: "Waiting for response", onClick: () => {} },
         { text: "Cancel", onClick: () => cancelFriendRequest(user) },
       ],
+      preventRowClick: true
     });
-    row.onclick = (e) => e.preventDefault();
     requestsList.appendChild(row);
   });
 
+  // Show placeholder if no requests
   if (!friendsRequestedIn.size && !friendsPendingOut.size) {
     const none = document.createElement("div");
     none.style.fontSize = "12px";
@@ -723,6 +736,7 @@ function renderRequests() {
     requestsList.appendChild(none);
   }
 }
+
 
 function renderDiscover() {
   const allOnline = new Set(Object.keys(presence));
@@ -894,7 +908,7 @@ onSnapshot(collection(db, "groups"), (snap) => {
       const unreadHolder = document.createElement("span");
       unreadHolder.className = "unread-holder";
       right.appendChild(unreadHolder);
-
+        
       const mkBtn = (txt, title) => {
         const b = document.createElement("button");
         b.textContent = txt;
@@ -1017,13 +1031,23 @@ async function sendMessage() {
   let text = document.getElementById("noteInput").value.trim();
   if (!text) return;
 
+  // Prevent posting to groups you left
   if (isGroupKey(activeTab) && !myGroups.has(activeTab)) {
     alert("You are not a member of this group.");
     return;
   }
 
+  const targetIsGroup = isGroupKey(activeTab);
+  const groupId = targetIsGroup ? groupNameFromKey(activeTab) : null;
+
+  // Pick the right collection
+  const msgCol = targetIsGroup
+    ? collection(db, "groups", groupId, "messages")
+    : collection(db, "messages");
+
+  // Handle URLs as attachments
   if (looksLikeUrl(text)) {
-    await addDoc(collection(db, "messages"), {
+    await addDoc(msgCol, {
       text: "",
       from: loggedInUser,
       to: activeTab,
@@ -1040,13 +1064,16 @@ async function sendMessage() {
     alert(`Message too long! Limit is ${maxLength} characters.`);
     return;
   }
+
   text = filterProfanity(text);
-  await addDoc(collection(db, "messages"), {
+
+  await addDoc(msgCol, {
     text,
     from: loggedInUser,
     to: activeTab,
     timestamp: Date.now(),
   });
+
   document.getElementById("noteInput").value = "";
 }
 
@@ -1069,6 +1096,47 @@ onSnapshot(q, async (snapshot) => {
     allMessages.push({ id: docSnap.id, data });
   }
   displayMessages();
+});
+/* ===== Group message listeners ===== */
+let groupUnsubs = {};
+
+function setupGroupListeners() {
+  // remove old listeners
+  Object.values(groupUnsubs).forEach(unsub => unsub());
+  groupUnsubs = {};
+
+  myGroups.forEach((key) => {
+    const groupId = groupNameFromKey(key);
+    const q = query(collection(db, "groups", groupId, "messages"), orderBy("timestamp"));
+
+    groupUnsubs[key] = onSnapshot(q, async (snapshot) => {
+      const now = Date.now();
+
+      // remove stale group messages for retention
+      snapshot.docChanges().forEach(async (change) => {
+        const data = change.doc.data();
+        if (!data || typeof data.timestamp !== "number") return;
+        if (now - data.timestamp > 60 * 60 * 1000) {
+          await deleteDoc(doc(db, "groups", groupId, "messages", change.doc.id));
+          return;
+        }
+      });
+
+      // merge into allMessages
+      allMessages = allMessages.filter(m => !(isGroupKey(m.data.to) && groupNameFromKey(m.data.to) === groupId));
+      snapshot.forEach((docSnap) => {
+        allMessages.push({ id: docSnap.id, data: docSnap.data() });
+      });
+
+      displayMessages();
+    });
+  });
+}
+
+// Call it whenever groups membership changes
+onSnapshot(collection(db, "groups"), (snap) => {
+  // … your existing groups list rebuild …
+  setupGroupListeners();
 });
 
 /* Unread tracking */
