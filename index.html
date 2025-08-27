@@ -431,7 +431,7 @@ body {
   <input type="color" id="bgSelector" onchange="changeBackground()" />
   <br><br>
   <button id="showNewsBtn" class="action-btn" type="button">Show News</button>
-  </p>
+
 </div>
 
 <div id="chatContainer">
@@ -1370,7 +1370,7 @@ if (isAdmin || data.from === loggedInUser) {
 
 
   notesList.appendChild(div);
-}z
+}
 
 
 function updateUnreadBadge(key) {
@@ -1406,12 +1406,29 @@ function updateUnreadBadge(key) {
 document.getElementById("chatAllBtn").onclick = () => openTab("all");
 openTab("all");
 
-/* Logout */
-document.getElementById("logoutBtn").onclick = async () => {
-  try { await deleteDoc(doc(db, "onlineUsers", loggedInUser)); } catch(_) {}
-  localStorage.removeItem("loggedInUser");
-  window.location.href = "login.html";
-};
+window.addEventListener("DOMContentLoaded", () => {
+  const logoutBtn = document.getElementById("logoutBtn");
+  if (logoutBtn) {
+    logoutBtn.onclick = async () => {
+      const user = localStorage.getItem("loggedInUser");
+      if (!user) {
+        window.location.href = "login.html";
+        return;
+      }
+
+      try {
+        // Mark offline in presence
+        await setDoc(doc(db, "onlineUsers", user), { online: false }, { merge: true });
+      } catch (err) {
+        console.warn("Logout presence update failed:", err);
+      } finally {
+        localStorage.removeItem("loggedInUser"); // clear session
+        window.location.href = "login.html";     // back to login screen
+      }
+    };
+  }
+});
+
 
 /* Attachments (paste a URL) */
 const attachBtn = document.getElementById("attachBtn");
