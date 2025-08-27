@@ -507,34 +507,7 @@ onSnapshot(myFriendsCol, (snap) => {
   renderDiscover();
 });
 
-/* ===== Friend actions ===== */
-async function sendFriendRequest(toUser) {
-  toUser = (toUser || "").trim();
-  if (!toUser) return alert("Enter a username");
-  if (toUser === loggedInUser) return alert("You can’t add yourself.");
-  if (toUser.length > 32) return alert("Username too long (max 32).");
 
-  const myRef = doc(db, "users", loggedInUser, "friends", toUser);
-  const theirRef = doc(db, "users", toUser, "friends", loggedInUser);
-  const targetUserRef = doc(db, "users", toUser);
-
-  try {
-    // Ensure the target user exists
-    const targetSnap = await getDoc(targetUserRef);
-    if (!targetSnap.exists()) {
-      await setDoc(targetUserRef, { createdAt: Date.now() });
-    }
-
-    // Create friend request
-    await setDoc(myRef, { status: "pending", addedAt: serverTimestamp() });
-    await setDoc(theirRef, { status: "requested", addedAt: serverTimestamp() });
-
-    alert(`Friend request sent to ${toUser}!`);
-  } catch (e) {
-    console.error(e);
-    alert("Could not send request. Check console for details.");
-  }
-}
 
 async function respondToFriendRequest(fromUser, accept) {
   const myRef = doc(db, "users", loggedInUser, "friends", fromUser);
@@ -704,16 +677,16 @@ function renderRequests() {
   requestsList.innerHTML = "";
 
   // Incoming requests (requested -> me)
-  sortUsersByPresence(friendsRequestedIn).forEach((user) => {
-    const row = buildUserRow(user, {
-      buttons: [
-        { text: "Accept", onClick: () => respondToFriendRequest(user, true) },
-        { text: "Reject", onClick: () => respondToFriendRequest(user, false) },
-      ],
-      preventRowClick: true // prevents opening chat on click
-    });
-    requestsList.appendChild(row);
+sortUsersByPresence(friendsRequestedIn).forEach((user) => {
+  const row = buildUserRow(user, {
+    buttons: [
+      { text: "Accept", onClick: () => respondToFriendRequest(user, true) },
+      { text: "Reject", onClick: () => respondToFriendRequest(user, false) },
+    ],
+    preventRowClick: true
   });
+  requestsList.appendChild(row);
+});
 
   // Outgoing pending (I sent)
   sortUsersByPresence(friendsPendingOut).forEach((user) => {
@@ -739,21 +712,26 @@ function renderRequests() {
 
 
 function renderDiscover() {
-  const allOnline = new Set(Object.keys(presence));
+  const allOnline = new Set(Object.keys(presence)); // everyone online
   const notFriends = [...allOnline].filter(u => !friendsAccepted.has(u) && u !== loggedInUser);
   const sorted = sortUsersByPresence(notFriends);
 
   discoverList.innerHTML = "";
+
   sorted.forEach((user) => {
     const alreadyPending = friendsPendingOut.has(user);
     const alreadyIncoming = friendsRequestedIn.has(user);
+
     const row = buildUserRow(user, {
       buttons: [
-        alreadyPending ? { text: "Pending…", onClick: () => {} } :
-        alreadyIncoming ? { text: "Accept", onClick: () => respondToFriendRequest(user, true) } :
-        { text: "Add", onClick: () => sendFriendRequest(user) },
+        alreadyPending
+          ? { text: "Pending…", onClick: () => {} }
+          : alreadyIncoming
+          ? { text: "Accept", onClick: () => respondToFriendRequest(user, true) }
+          : { text: "Add", onClick: () => sendFriendRequest(user) }
       ],
     });
+
     discoverList.appendChild(row);
   });
 
@@ -763,6 +741,20 @@ function renderDiscover() {
     msg.style.color = "#ccc";
     msg.textContent = "No one to discover right now.";
     discoverList.appendChild(msg);
+  }
+}
+
+async function sendFriendRequest(toUser) {
+  if (!toUser || toUser === loggedInUser) return;
+  const myRef = doc(db, "users", loggedInUser, "friends", toUser);
+  const theirRef = doc(db, "users", toUser, "friends", loggedInUser);
+
+  try {
+    await setDoc(myRef, { status: "pending" });
+    await setDoc(theirRef, { status: "requested" });
+  } catch (err) {
+    console.error(err);
+    alert("Failed to send friend request.");
   }
 }
 
@@ -1022,14 +1014,18 @@ function highlightActiveTab() {
   Object.values(openTabs).forEach((tab) => tab.classList.remove("active"));
   if (openTabs[activeTab]) openTabs[activeTab].classList.add("active");
 }
-
-/* ===== Messages ===== */
-const notesList = document.getElementById("notesList");
-let allMessages = [];
-
 async function sendMessage() {
   let text = document.getElementById("noteInput").value.trim();
   if (!text) return;
+
+const isDM = !isGroupKey(activeTab) && activeTab !== "all";
+const isFriend = friendsAccepted.has(activeTab);
+
+if (isDM && !isFriend) {
+  alert("You can only message users you are friends with.");
+  return;
+}
+
 
   // Prevent posting to groups you left
   if (isGroupKey(activeTab) && !myGroups.has(activeTab)) {
@@ -1077,26 +1073,42 @@ async function sendMessage() {
   document.getElementById("noteInput").value = "";
 }
 
+
 document.getElementById("sendBtn").onclick = sendMessage;
 document.getElementById("noteInput").addEventListener("keydown", (e) => {
   if (e.key === "Enter") { e.preventDefault(); sendMessage(); }
 });
 
 const q = query(collection(db, "messages"), orderBy("timestamp"));
-onSnapshot(q, async (snapshot) => {
-  allMessages = [];
-  const now = Date.now();
-  for (const docSnap of snapshot.docs) {
-    const data = docSnap.data();
-    if (!data || typeof data.timestamp !== "number") continue;
-    if (now - data.timestamp > 60 * 60 * 1000) {
-      await deleteDoc(doc(db, "messages", docSnap.id));
-      continue;
+onSnapshot(q, (snapshot) => {
+  snapshot.docChanges().forEach((change) => {
+    const data = change.doc.data();
+    const id = change.doc.id;
+
+    if (change.type === "added") {
+      if (!data || typeof data.timestamp !== "number") return;
+      mergeMessage({ id, data });
     }
-    allMessages.push({ id: docSnap.id, data });
-  }
+
+    if (change.type === "modified") {
+      if (!data || typeof data.timestamp !== "number") return;
+      mergeMessage({ id, data }); // update content if edited
+    }
+
+    if (change.type === "removed") {
+      // Remove from messagesByTab
+      Object.keys(messagesByTab).forEach((key) => {
+        messagesByTab[key] = messagesByTab[key].filter(m => m.id !== id);
+        // Also update unread if needed
+        if (unreadMessageIds[key]) unreadMessageIds[key].delete(id);
+      });
+    }
+  });
+
   displayMessages();
 });
+
+
 /* ===== Group message listeners ===== */
 let groupUnsubs = {};
 
@@ -1106,31 +1118,31 @@ function setupGroupListeners() {
   groupUnsubs = {};
 
   myGroups.forEach((key) => {
-    const groupId = groupNameFromKey(key);
-    const q = query(collection(db, "groups", groupId, "messages"), orderBy("timestamp"));
+  const groupId = groupNameFromKey(key);
+  const q = query(collection(db, "groups", groupId, "messages"), orderBy("timestamp"));
 
-    groupUnsubs[key] = onSnapshot(q, async (snapshot) => {
-      const now = Date.now();
+  groupUnsubs[key] = onSnapshot(q, (snapshot) => {
+  snapshot.docChanges().forEach((change) => {
+    const data = change.doc.data();
+    const id = change.doc.id;
 
-      // remove stale group messages for retention
-      snapshot.docChanges().forEach(async (change) => {
-        const data = change.doc.data();
-        if (!data || typeof data.timestamp !== "number") return;
-        if (now - data.timestamp > 60 * 60 * 1000) {
-          await deleteDoc(doc(db, "groups", groupId, "messages", change.doc.id));
-          return;
-        }
-      });
+    if (change.type === "added" || change.type === "modified") {
+      if (!data || typeof data.timestamp !== "number") return;
+      mergeMessage({ id, data });
+    }
 
-      // merge into allMessages
-      allMessages = allMessages.filter(m => !(isGroupKey(m.data.to) && groupNameFromKey(m.data.to) === groupId));
-      snapshot.forEach((docSnap) => {
-        allMessages.push({ id: docSnap.id, data: docSnap.data() });
-      });
-
-      displayMessages();
-    });
+    if (change.type === "removed") {
+      if (!messagesByTab[key]) return;
+      messagesByTab[key] = messagesByTab[key].filter(m => m.id !== id);
+      if (unreadMessageIds[key]) unreadMessageIds[key].delete(id);
+    }
   });
+
+  displayMessages();
+});
+
+});
+
 }
 
 // Call it whenever groups membership changes
@@ -1139,59 +1151,62 @@ onSnapshot(collection(db, "groups"), (snap) => {
   setupGroupListeners();
 });
 
+/* ===== Messages ===== */
+const notesList = document.getElementById("notesList");
+let allMessages = [];  // ← Add this so displayMessages can use it
+
 /* Unread tracking */
 let unreadCounts = {};
 let unreadMessageIds = {}; // { key: Set<messageId> }
 
+// Track messages separately to avoid duplicates
+let messagesByTab = {}; // key = "all", username, or group:groupName, value = array of messages
+
 function displayMessages() {
   notesList.innerHTML = "";
 
-  allMessages.forEach(({ id, data }) => {
-    const isBroadcast = data.to === "all";
-    const isDMToMe =
-      data.to === loggedInUser && data.from !== loggedInUser && !isBroadcast && !isGroupKey(data.to);
-    const isGroupMsg = isGroupKey(data.to);
+  // Get the messages for the current tab only
+  const tabKey = activeTab;
+  const messages = messagesByTab[tabKey] || [];
 
-    const shouldShow =
-      (activeTab === "all" && isBroadcast) ||
-      (isGroupKey(activeTab) && data.to === activeTab) ||
-      (!isGroupKey(activeTab) && activeTab !== "all" && (
-        (data.from === activeTab && data.to === loggedInUser) ||
-        (data.to === activeTab && data.from === loggedInUser)
-      ));
+  messages.forEach(({ id, data }) => {
+    renderMessage({ id }, data);
 
-    if (shouldShow) {
-      renderMessage({ id }, data);
-      const key = isBroadcast ? "all" : data.to;
-      if (unreadMessageIds[key]) unreadMessageIds[key].delete(id);
-    } else {
-      if (isDMToMe) {
-        if (!unreadMessageIds[data.from]) unreadMessageIds[data.from] = new Set();
-        if (!unreadMessageIds[data.from].has(id)) {
-          unreadMessageIds[data.from].add(id);
-          unreadCounts[data.from] = (unreadCounts[data.from] || 0) + 1;
-        }
-      }
-      if (isBroadcast && activeTab !== "all" && data.from !== loggedInUser) {
-        if (!unreadMessageIds["all"]) unreadMessageIds["all"] = new Set();
-        if (!unreadMessageIds["all"].has(id)) {
-          unreadMessageIds["all"].add(id);
-          unreadCounts["all"] = (unreadCounts["all"] || 0) + 1;
-        }
-      }
-      if (isGroupMsg && myGroups.has(data.to) && data.from !== loggedInUser && activeTab !== data.to) {
-        if (!unreadMessageIds[data.to]) unreadMessageIds[data.to] = new Set();
-        if (!unreadMessageIds[data.to].has(id)) {
-          unreadMessageIds[data.to].add(id);
-          unreadCounts[data.to] = (unreadCounts[data.to] || 0) + 1;
-        }
-      }
-    }
+    // Mark as read in unread tracking
+    if (unreadMessageIds[tabKey]) unreadMessageIds[tabKey].delete(id);
   });
 
-  Object.keys(unreadCounts).forEach((key) => updateUnreadBadge(key));
   notesList.scrollTop = notesList.scrollHeight;
+
+  // Update unread badges
+  Object.keys(unreadCounts).forEach((key) => updateUnreadBadge(key));
 }
+
+// Add a helper to merge new messages into messagesByTab
+function mergeMessage(msg) {
+  const { id, data } = msg;
+  let key;
+
+  if (isGroupKey(data.to)) key = data.to;
+  else if (data.to === "all") key = "all";
+  else key = data.from === loggedInUser ? data.to : data.from;
+
+  if (!messagesByTab[key]) messagesByTab[key] = [];
+  messagesByTab[key] = messagesByTab[key].filter(m => m.id !== id); // remove duplicates
+  messagesByTab[key].push(msg);
+
+  // Track unread
+  const isDMToMe = key !== "all" && !isGroupKey(key) && data.to === loggedInUser && data.from !== loggedInUser;
+  if ((isDMToMe || (key === "all" && data.from !== loggedInUser) || (isGroupKey(key) && data.from !== loggedInUser && !myGroups.has(key)))) {
+    if (!unreadMessageIds[key]) unreadMessageIds[key] = new Set();
+    if (!unreadMessageIds[key].has(id)) {
+      unreadMessageIds[key].add(id);
+      unreadCounts[key] = (unreadCounts[key] || 0) + 1;
+    }
+  }
+}
+
+
 
 function renderMessage(docSnap, data) {
   const div = document.createElement("div");
