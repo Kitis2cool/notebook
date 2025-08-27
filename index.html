@@ -32,8 +32,8 @@ body {
   z-index: 2;
 }
 
-#sidebar.hidden {
-  transform: translateX(100%); /* slide out to the right */
+#sidebar.hidden ~ #chatContainer {
+  margin-right: 0; /* expand when sidebar hidden */
 }
 
 #main {
@@ -45,8 +45,9 @@ body {
   transition: margin-right 0.3s ease;
 }
 
-#sidebar.hidden ~ #main {
-  margin-right: 0; /* when sidebar hidden, chat expands */
+/* When hidden, move sidebar out of view */
+#sidebar.hidden {
+  transform: translateX(100%);
 }
 
 #toggleSidebar {
@@ -62,18 +63,27 @@ body {
   z-index: 3;
 }
 
-
-/* Sidebar */
 #sidebar {
-  width: 350px;
-  background: rgba(15, 40, 98, 0.95);
-  border-right: 1px solid #4f5f76;
-  padding: 18px;
-  overflow-y: auto;
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 400px;
+  background: linear-gradient(145deg, rgba(15,40,98,0.95), rgba(30,60,120,0.95));
+  border-radius: 6px 0 0 6px; /* only left side slightly rounded */
   backdrop-filter: blur(8px);
-  box-shadow: 2px 0 6px rgba(0,0,0,0.3);
+  box-shadow: -4px 0 20px rgba(0,0,0,0.25); /* softer shadow */
+  border-left: 1px solid rgba(255,255,255,0.05); /* very subtle light border */
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  z-index: 2;
+  overflow-y: auto;
 }
 
+
+/* Slight hover elevation effect */
+#sidebar:hover {
+  box-shadow: 0 12px 30px rgba(0,0,0,0.5);
+}
 #sidebar h3 {
   margin: 18px 0 10px;
   font-size: 16px;
@@ -199,13 +209,14 @@ body {
 }
 #chatAllBtn:hover { transform: scale(1.05); box-shadow: 0 3px 10px rgba(158,54,58,0.4); }
 
-/* Chat container */
 #chatContainer {
   flex: 1;
   display: flex;
   flex-direction: column;
   background: linear-gradient(180deg, #091f36, #0f2862);
   color: #f5f5f5;
+  margin-right: 350px; /* same as sidebar width */
+  transition: margin-right 0.3s ease;
 }
 
 /* Tabs */
@@ -1150,14 +1161,14 @@ async function sendMessage() {
 
 document.getElementById("toggleSidebar").addEventListener("click", () => {
   const sidebar = document.getElementById("sidebar");
-  const main = document.getElementById("main");
+  const chat = document.getElementById("chatContainer");
 
   sidebar.classList.toggle("hidden");
 
   if (sidebar.classList.contains("hidden")) {
-    main.style.marginLeft = "0";
+    chat.style.marginRight = "0";
   } else {
-    main.style.marginLeft = "320px"; // same width as sidebar
+    chat.style.marginRight = sidebar.offsetWidth + "px";
   }
 });
 
