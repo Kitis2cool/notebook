@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
+<meta charset="UTF-8" />
 <title>Kitchatty</title>
 <style>
 /* Base layout */
@@ -17,7 +17,7 @@ body {
 
 /* Sidebar */
 #sidebar {
-  width: 250px;
+  width: 280px;
   background: rgba(15, 40, 98, 0.95);
   border-right: 1px solid #4f5f76;
   padding: 18px;
@@ -27,7 +27,7 @@ body {
 }
 
 #sidebar h3 {
-  margin: 0 0 14px;
+  margin: 18px 0 10px;
   font-size: 16px;
   font-weight: bold;
   color: #fff;
@@ -66,6 +66,45 @@ body {
 
 .last-seen { font-size: 11px; color: #ccc; display: block; margin-top: 3px; }
 .admin-badge { font-size: 11px; font-weight: bold; color: #ffcc00; margin-left: 6px; }
+
+/* Small inline buttons */
+.action-btn {
+  margin-left: 6px;
+  border: none;
+  background: #4f5f76;
+  color: #fff;
+  padding: 3px 8px;
+  font-size: 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.action-btn:hover { background: #6b7a98; }
+
+/* Controls row */
+#friendControls {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+#friendInput {
+  flex: 1;
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid #333;
+  background: #091f36;
+  color: #fff;
+}
+#addFriendBtn, #toggleDiscoverBtn {
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: none;
+  background: linear-gradient(90deg, #386fa4, #2d4a7c);
+  color: #fff;
+  cursor: pointer;
+  font-weight: bold;
+}
+#addFriendBtn:hover, #toggleDiscoverBtn:hover { filter: brightness(1.1); }
 
 /* Chat All Button */
 #chatAllBtn {
@@ -241,30 +280,74 @@ body {
   box-shadow: 0 3px 10px rgba(158,54,58,0.4);
 }
 .unread-holder { display: flex; align-items: center; margin-left: 8px; }
-.help {
-  font-size: 12px; color: #ccc; margin-top: 8px; line-height: 1.3;
-}
+.help { font-size: 12px; color: #ccc; margin-top: 8px; line-height: 1.3; }
 .help a { color: #ffcc00; }
+
+/* ===== Modal (News) ===== */
+#newsOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+#newsModal {
+  width: min(600px, 90vw);
+  max-height: 80vh;
+  overflow-y: auto;
+  background: #0f2862;
+  color: #fff;
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  padding: 18px 20px;
+}
+#newsModal header { display:flex; align-items:center; justify-content:space-between; }
+#newsModal h2 { margin: 0 0 8px; }
+#closeNewsBtn {
+  border: none; background: #9e363a; color: #fff; padding: 6px 10px; border-radius: 8px; cursor: pointer;
+}
+#dontShowNewsBtn {
+  border: none; background: #4f5f76; color: #fff; padding: 6px 10px; border-radius: 8px; cursor: pointer; margin-right: 8px;
+}
 </style>
 </head>
 <body>
 
 <div id="sidebar">
-  <h3>Online Users</h3>
-  <div id="onlineUsersList"></div>
+  <h3>Friends</h3>
+  <div id="friendControls">
+    <input id="friendInput" type="text" placeholder="Add friend by username" maxlength="32" />
+    <button id="addFriendBtn">Add</button>
+    <button id="toggleDiscoverBtn" title="Show/Hide all online users">Discover</button>
+  </div>
+
+  <div id="friendsList"></div>
+
+  <h3>Friend Requests</h3>
+  <div id="requestsList"></div>
+
+  <h3 style="display:flex;align-items:center;justify-content:space-between;">Discover (All Online)
+    <span style="font-size:12px;color:#ccc;">— filtered to non-friends</span>
+  </h3>
+  <div id="discoverList"></div>
+
   <button id="chatAllBtn">Chat All</button>
   <button id="editProfileBtn" style="width:100%; padding:12px; margin-top:8px; border:none; background:#4f5f76; color:#fff; font-weight:bold; border-radius:8px; cursor:pointer;" hidden>
     Edit Profile
   </button>
 
-  <br><br>
-  <input type="color" id="bgSelector" onchange="changeBackground()">
+  <br /><br />
+  <input type="color" id="bgSelector" onchange="changeBackground()" />
   <p class="help">
-    <span style="font-weight: bolder; color:gold">Updates/News:</span><br><br>
-    Now with profile pictures, profanity filter, and character limit.<br><br>
+    <span style="font-weight: bolder; color:gold">Updates/News:</span><br /><br />
+    Now with profile pictures, profanity filter, and character limit.<br /><br />
     <em>Free plan tip:</em> to share images/files, upload to a free host (e.g.
     <a href="https://imgur.com/upload" target="_blank" rel="noopener noreferrer">Imgur</a>,
     <a href="https://postimages.org/" target="_blank" rel="noopener noreferrer">Postimages</a>) and paste the link with the 📎 button.
+    <br /><br />
+    <button id="showNewsBtn" class="action-btn" type="button">Show News</button>
   </p>
 </div>
 
@@ -272,11 +355,36 @@ body {
   <div id="tabs"></div>
   <div id="notesList"></div>
   <div id="chatBar">
-    <input id="username" readonly>
-    <input type="text" id="noteInput" placeholder="Write a message or paste a link...">
+    <input id="username" readonly />
+    <input type="text" id="noteInput" placeholder="Write a message or paste a link..." />
     <button id="sendBtn">Send</button>
     <button id="attachBtn" title="Paste a URL">📎</button>
     <button id="logoutBtn">Logout</button>
+  </div>
+</div>
+
+<!-- News Modal -->
+<div id="newsOverlay" role="dialog" aria-modal="true" aria-labelledby="newsTitle">
+  <div id="newsModal">
+    <header>
+      <h2 id="newsTitle">Kitchatty — Updates</h2>
+      <button id="closeNewsBtn" type="button">Close</button>
+    </header>
+    <div style="font-size:14px; line-height:1.5;">
+      <p><strong>What’s new:</strong></p>
+      <ul>
+        <li>✨ Brand new Friends system (add/accept/remove + requests)</li>
+        <li>🗂️ Sidebar is decluttered — only shows your friends by default</li>
+        <li>🛡️ Profanity filter & 350 character limit</li>
+        <li>🖼️ Free attachments via pasted links (Imgur/Postimages etc.)</li>
+        <li>📣 This news pops up the first time you open the page</li>
+      </ul>
+      <p style="opacity:.8;">Tip: Use <em>Discover</em> to see everyone currently online and add them as friends.</p>
+      <div style="margin-top:10px; display:flex; justify-content:flex-end; gap:8px;">
+        <button id="dontShowNewsBtn" type="button">Don’t show again</button>
+        <button id="ackNewsBtn" class="action-btn" type="button">Got it</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -286,7 +394,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebas
 import {
   getFirestore, collection, addDoc, onSnapshot,
   deleteDoc, doc, query, orderBy, setDoc,
-  updateDoc, arrayUnion, arrayRemove
+  updateDoc, arrayUnion, arrayRemove, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
 /* ===== Firebase (Spark-plan friendly: no Storage) ===== */
@@ -307,7 +415,7 @@ const ADMIN_USER = "kitis";
 let isAdmin = false;
 const loggedInUser = localStorage.getItem("loggedInUser");
 if (!loggedInUser) window.location.href = "login.html";
-document.getElementById("username").value = loggedInUser;
+(document.getElementById("username")).value = loggedInUser;
 if (loggedInUser === ADMIN_USER) isAdmin = true;
 
 /* ===== Helpers ===== */
@@ -323,11 +431,17 @@ function formatLastSeen(ms) {
   const minutes = Math.floor(seconds / 60);
   if (minutes < 60) return `${minutes} min ago`;
   const hours = Math.floor(minutes / 60);
-  return `${hours} hr ago`;
+  if (hours < 24) return `${hours} hr ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
 }
 
 /* ===== Profanity filter ===== */
-const bannedWords = ["fuck", "bitch", "pussy", "cock", "cum", "slut", "whore", "france", "french", "british", "asshole", "dick", "cunt", "bastard", "motherfucker", "nigger", "nigga", "chink", "spic", "fag", "faggot", "retard"];
+const bannedWords = [
+  "fuck","bitch","pussy","cock","cum","slut","whore",
+  "france","french","british","asshole","dick","cunt","bastard","motherfucker",
+  "nigger","nigga","chink","spic","fag","faggot","retard"
+];
 function filterProfanity(text) {
   let filtered = text;
   bannedWords.forEach((w) => {
@@ -338,8 +452,320 @@ function filterProfanity(text) {
 }
 
 /* ===== Presence ===== */
-const onlineUsersList = document.getElementById("onlineUsersList");
+const friendsList = document.getElementById("friendsList");
+const requestsList = document.getElementById("requestsList");
+const discoverList = document.getElementById("discoverList");
 
+// Track who is online + their meta
+let presence = {}; // { username: { lastActive:number, avatar:string } }
+
+// Friends state
+let friendsAccepted = new Set();
+let friendsPendingOut = new Set(); // I sent
+let friendsRequestedIn = new Set(); // They sent
+
+// Listen to online presence
+onSnapshot(collection(db, "onlineUsers"), (snapshot) => {
+  const now = Date.now();
+  const map = {};
+  snapshot.forEach((docSnap) => {
+    const data = docSnap.data();
+    const user = data.username;
+    if (!user || user === loggedInUser) return; // hide self
+    map[user] = {
+      lastActive: data.lastActive || 0,
+      avatar: data.avatar || `https://i.pravatar.cc/30?u=${user}`,
+      online: now - (data.lastActive || 0) <= 60 * 1000
+    };
+  });
+  presence = map;
+  renderFriends();
+  renderDiscover();
+});
+
+/* ===== Friends subcollection ===== */
+const myFriendsCol = collection(db, "users", loggedInUser, "friends");
+
+onSnapshot(myFriendsCol, (snap) => {
+  friendsAccepted = new Set();
+  friendsPendingOut = new Set();
+  friendsRequestedIn = new Set();
+
+  snap.forEach((docSnap) => {
+    const friend = docSnap.id;
+    const data = docSnap.data();
+    const status = (data && data.status) || "";
+    if (status === "accepted") friendsAccepted.add(friend);
+    else if (status === "pending") friendsPendingOut.add(friend);
+    else if (status === "requested") friendsRequestedIn.add(friend);
+  });
+
+  renderFriends();
+  renderRequests();
+  renderDiscover();
+});
+
+/* ===== Friend actions ===== */
+async function sendFriendRequest(toUser) {
+  toUser = (toUser || "").trim();
+  if (!toUser) return alert("Enter a username");
+  if (toUser === loggedInUser) return alert("You can’t add yourself.");
+  if (toUser.length > 32) return alert("Username too long (max 32).");
+
+  const myRef = doc(db, "users", loggedInUser, "friends", toUser);
+  const theirRef = doc(db, "users", toUser, "friends", loggedInUser);
+
+  try {
+    await setDoc(myRef, { status: "pending", addedAt: serverTimestamp() });
+    await setDoc(theirRef, { status: "requested", addedAt: serverTimestamp() });
+  } catch (e) {
+    console.error(e);
+    alert("Could not send request.");
+  }
+}
+
+async function respondToFriendRequest(fromUser, accept) {
+  const myRef = doc(db, "users", loggedInUser, "friends", fromUser);
+  const theirRef = doc(db, "users", fromUser, "friends", loggedInUser);
+  try {
+    if (accept) {
+      await updateDoc(myRef, { status: "accepted" });
+      await updateDoc(theirRef, { status: "accepted" });
+    } else {
+      await deleteDoc(myRef);
+      await deleteDoc(theirRef);
+    }
+  } catch (e) {
+    console.error(e);
+    alert("Failed to update request.");
+  }
+}
+
+async function cancelFriendRequest(user) {
+  const myRef = doc(db, "users", loggedInUser, "friends", user);
+  const theirRef = doc(db, "users", user, "friends", loggedInUser);
+  try {
+    await deleteDoc(myRef);
+    await deleteDoc(theirRef);
+  } catch (e) {
+    console.error(e);
+    alert("Failed to cancel request.");
+  }
+}
+
+async function removeFriend(user) {
+  if (!confirm(`Remove ${user} from friends?`)) return;
+  const myRef = doc(db, "users", loggedInUser, "friends", user);
+  const theirRef = doc(db, "users", user, "friends", loggedInUser);
+  try {
+    await deleteDoc(myRef);
+    await deleteDoc(theirRef);
+  } catch (e) {
+    console.error(e);
+    alert("Failed to remove friend.");
+  }
+}
+
+/* ===== Rendering ===== */
+function sortUsersByPresence(usernames) {
+  const now = Date.now();
+  return [...usernames].sort((a, b) => {
+    const A = presence[a] || {}; const B = presence[b] || {};
+    const aOnline = A.lastActive ? now - A.lastActive <= 60*1000 : false;
+    const bOnline = B.lastActive ? now - B.lastActive <= 60*1000 : false;
+    if (aOnline && !bOnline) return -1;
+    if (!aOnline && bOnline) return 1;
+    return (B.lastActive || 0) - (A.lastActive || 0);
+  });
+}
+
+function buildUserRow(user, opts = {}) {
+  const meta = presence[user] || { lastActive: 0, avatar: `https://i.pravatar.cc/30?u=${user}` };
+
+  const div = document.createElement("div");
+  div.className = "online-user";
+  div.dataset.user = user;
+
+  const left = document.createElement("div");
+  left.style.display = "flex";
+  left.style.flexDirection = "column";
+
+  const name = document.createElement("span");
+  const now = Date.now();
+  const isOnline = now - (meta.lastActive || 0) <= 60*1000;
+  name.textContent = user + (isOnline ? " (online)" : "");
+  left.appendChild(name);
+
+  if (!isOnline && meta.lastActive) {
+    const seen = document.createElement("span");
+    seen.className = "last-seen";
+    seen.textContent = `(last seen ${formatLastSeen(now - meta.lastActive)})`;
+    left.appendChild(seen);
+  }
+
+  div.appendChild(left);
+
+  const right = document.createElement("div");
+  right.style.display = "flex";
+  right.style.alignItems = "center";
+
+  if (user === ADMIN_USER) {
+    const badge = document.createElement("span");
+    badge.className = "admin-badge";
+    badge.textContent = "[ADMIN]";
+    right.appendChild(badge);
+  }
+
+  const unreadHolder = document.createElement("span");
+  unreadHolder.className = "unread-holder";
+  right.appendChild(unreadHolder);
+
+  // Optional trailing buttons
+  (opts.buttons || []).forEach((btnDef) => {
+    const b = document.createElement("button");
+    b.className = "action-btn";
+    b.textContent = btnDef.text;
+    b.title = btnDef.title || "";
+    b.onclick = (e) => { e.stopPropagation(); btnDef.onClick && btnDef.onClick(); };
+    right.appendChild(b);
+  });
+
+  const avatarImg = document.createElement("img");
+  avatarImg.src = meta.avatar;
+  avatarImg.style.marginRight = "8px";
+  avatarImg.style.borderRadius = "800px";
+  div.prepend(avatarImg);
+
+  div.onclick = () => openTab(user);
+  return div;
+}
+
+function renderFriends() {
+  friendsList.innerHTML = "";
+
+  // All Chat pseudo-row
+  const allDiv = document.createElement("div");
+  allDiv.className = "online-user";
+  allDiv.dataset.user = "all";
+  const leftAll = document.createElement("div");
+  leftAll.style.display = "flex";
+  leftAll.style.flexDirection = "column";
+  const labelAll = document.createElement("span");
+  labelAll.textContent = "All Chat";
+  leftAll.appendChild(labelAll);
+  allDiv.appendChild(leftAll);
+  const rightAll = document.createElement("div");
+  rightAll.style.display = "flex";
+  rightAll.style.alignItems = "center";
+  const unreadHolderAll = document.createElement("span");
+  unreadHolderAll.className = "unread-holder";
+  rightAll.appendChild(unreadHolderAll);
+  allDiv.appendChild(rightAll);
+  allDiv.onclick = () => openTab("all");
+  friendsList.appendChild(allDiv);
+  updateUnreadBadge("all");
+
+  const sorted = sortUsersByPresence(friendsAccepted);
+  sorted.forEach((user) => {
+    const row = buildUserRow(user, {
+      buttons: [
+        { text: "Chat", title: "Open chat", onClick: () => openTab(user) },
+        { text: "−", title: "Remove friend", onClick: () => removeFriend(user) },
+      ],
+    });
+    friendsList.appendChild(row);
+    updateUnreadBadge(user);
+  });
+
+  if (!sorted.length) {
+    const hint = document.createElement("div");
+    hint.style.fontSize = "12px";
+    hint.style.color = "#ccc";
+    hint.style.marginTop = "6px";
+    hint.innerHTML = "No friends yet. Use <strong>Discover</strong> or add by username above.";
+    friendsList.appendChild(hint);
+  }
+}
+
+function renderRequests() {
+  requestsList.innerHTML = "";
+
+  // Incoming requests (requested -> me)
+  sortUsersByPresence(friendsRequestedIn).forEach((user) => {
+    const row = buildUserRow(user, {
+      buttons: [
+        { text: "Accept", onClick: () => respondToFriendRequest(user, true) },
+        { text: "Reject", onClick: () => respondToFriendRequest(user, false) },
+      ],
+    });
+    // Override default click to not open chat on the whole row in requests
+    row.onclick = (e) => e.preventDefault();
+    requestsList.appendChild(row);
+  });
+
+  // Outgoing pending (I sent)
+  sortUsersByPresence(friendsPendingOut).forEach((user) => {
+    const row = buildUserRow(user, {
+      buttons: [
+        { text: "Pending…", title: "Waiting for response", onClick: () => {} },
+        { text: "Cancel", onClick: () => cancelFriendRequest(user) },
+      ],
+    });
+    row.onclick = (e) => e.preventDefault();
+    requestsList.appendChild(row);
+  });
+
+  if (!friendsRequestedIn.size && !friendsPendingOut.size) {
+    const none = document.createElement("div");
+    none.style.fontSize = "12px";
+    none.style.color = "#ccc";
+    none.textContent = "No pending requests.";
+    requestsList.appendChild(none);
+  }
+}
+
+function renderDiscover() {
+  const allOnline = new Set(Object.keys(presence));
+  const notFriends = [...allOnline].filter(u => !friendsAccepted.has(u) && u !== loggedInUser);
+  const sorted = sortUsersByPresence(notFriends);
+
+  discoverList.innerHTML = "";
+  sorted.forEach((user) => {
+    const alreadyPending = friendsPendingOut.has(user);
+    const alreadyIncoming = friendsRequestedIn.has(user);
+    const row = buildUserRow(user, {
+      buttons: [
+        alreadyPending ? { text: "Pending…", onClick: () => {} } :
+        alreadyIncoming ? { text: "Accept", onClick: () => respondToFriendRequest(user, true) } :
+        { text: "Add", onClick: () => sendFriendRequest(user) },
+      ],
+    });
+    discoverList.appendChild(row);
+  });
+
+  if (!sorted.length) {
+    const msg = document.createElement("div");
+    msg.style.fontSize = "12px";
+    msg.style.color = "#ccc";
+    msg.textContent = "No one to discover right now.";
+    discoverList.appendChild(msg);
+  }
+}
+
+/* Controls */
+document.getElementById("addFriendBtn").onclick = () => {
+  const input = document.getElementById("friendInput");
+  sendFriendRequest(input.value);
+  input.value = "";
+};
+
+const toggleDiscoverBtn = document.getElementById("toggleDiscoverBtn");
+toggleDiscoverBtn.onclick = () => {
+  const isHidden = getComputedStyle(discoverList).display === "none";
+  discoverList.style.display = isHidden ? "block" : "none";
+};
+
+/* ===== Presence: mark myself online ===== */
 async function goOnline() {
   const userRef = doc(db, "onlineUsers", loggedInUser);
   await setDoc(userRef, {
@@ -353,11 +779,7 @@ setInterval(async () => {
   const userRef = doc(db, "onlineUsers", loggedInUser);
   await setDoc(
     userRef,
-    {
-      username: loggedInUser,
-      lastActive: Date.now(),
-      avatar: "https://i.pravatar.cc/30?u=" + loggedInUser,
-    },
+    { username: loggedInUser, lastActive: Date.now(), avatar: `https://i.pravatar.cc/30?u=${loggedInUser}` },
     { merge: true }
   );
 }, 30000);
@@ -367,109 +789,14 @@ onSnapshot(doc(db, "profiles", loggedInUser), (snap) => {
   if (!snap.exists()) return;
   const data = snap.data();
   const userDiv = document.querySelector(`.online-user[data-user="${CSS.escape(loggedInUser)}"]`);
-  if (!userDiv) return; // we don't render self in list
+  if (!userDiv) return; // we don't render self in lists
   const img = userDiv.querySelector("img");
   if (img) img.src = data.avatar || `https://i.pravatar.cc/30?u=${loggedInUser}`;
   const label = userDiv.querySelector("span");
   if (label) label.textContent = `${loggedInUser} - ${data.status || ""}`;
 });
 
-/* ===== Sidebar: Online Users (and All Chat) ===== */
-onSnapshot(collection(db, "onlineUsers"), (snapshot) => {
-  onlineUsersList.innerHTML = "";
-  const now = Date.now();
-  const usersMap = {};
-  snapshot.forEach((docSnap) => {
-    const data = docSnap.data();
-    const user = data.username;
-    const lastActive = data.lastActive || 0;
-    const avatar = data.avatar || "https://i.pravatar.cc/30?u=" + user;
-    if (user === loggedInUser) return; // hide self
-    usersMap[user] = { user, lastActive, avatar };
-  });
-
-  const sortedUsers = Object.values(usersMap).sort((a, b) => {
-    const aOnline = now - a.lastActive <= 60 * 1000;
-    const bOnline = now - b.lastActive <= 60 * 1000;
-    if (aOnline && !bOnline) return -1;
-    if (!aOnline && bOnline) return 1;
-    return b.lastActive - a.lastActive;
-  });
-
-  // "All Chat" pseudo-user row
-  const allDiv = document.createElement("div");
-  allDiv.className = "online-user";
-  allDiv.dataset.user = "all";
-
-  const leftAll = document.createElement("div");
-  leftAll.style.display = "flex";
-  leftAll.style.flexDirection = "column";
-  const labelAll = document.createElement("span");
-  labelAll.textContent = "All Chat";
-  leftAll.appendChild(labelAll);
-  allDiv.appendChild(leftAll);
-
-  const rightAll = document.createElement("div");
-  rightAll.style.display = "flex";
-  rightAll.style.alignItems = "center";
-  const unreadHolderAll = document.createElement("span");
-  unreadHolderAll.className = "unread-holder";
-  rightAll.appendChild(unreadHolderAll);
-  allDiv.appendChild(rightAll);
-
-  allDiv.onclick = () => openTab("all");
-  onlineUsersList.prepend(allDiv);
-  updateUnreadBadge("all");
-
-  // Real users
-  sortedUsers.forEach(({ user, lastActive, avatar }) => {
-    const div = document.createElement("div");
-    div.className = "online-user";
-    div.dataset.user = user;
-
-    const left = document.createElement("div");
-    left.style.display = "flex";
-    left.style.flexDirection = "column";
-    const label = document.createElement("span");
-    label.textContent = user + (now - lastActive <= 60 * 1000 ? " (online)" : "");
-    left.appendChild(label);
-    if (now - lastActive > 60 * 1000) {
-      const span = document.createElement("span");
-      span.className = "last-seen";
-      span.textContent = `(last seen ${formatLastSeen(now - lastActive)})`;
-      left.appendChild(span);
-    }
-    div.appendChild(left);
-
-    const right = document.createElement("div");
-    right.style.display = "flex";
-    right.style.alignItems = "center";
-    if (user === ADMIN_USER) {
-      const badge = document.createElement("span");
-      badge.className = "admin-badge";
-      badge.textContent = "[ADMIN]";
-      right.appendChild(badge);
-    }
-    const unreadHolder = document.createElement("span");
-    unreadHolder.className = "unread-holder";
-    right.appendChild(unreadHolder);
-    div.appendChild(right);
-
-    const avatarImg = document.createElement("img");
-    avatarImg.src = avatar;
-    avatarImg.style.marginRight = "8px";
-    avatarImg.style.borderRadius = "800px";
-    div.prepend(avatarImg);
-
-    div.onclick = () => openTab(user);
-    onlineUsersList.appendChild(div);
-    updateUnreadBadge(user);
-  });
-});
-
 /* ===== Groups: UI + Data ===== */
-
-// Build Groups section once (no HTML changes needed)
 const sidebar = document.getElementById("sidebar");
 const groupsHeader = document.createElement("h3");
 groupsHeader.textContent = "Groups";
@@ -488,8 +815,7 @@ newGroupBtn.style.cssText = `
 newGroupBtn.onmouseenter = () => (newGroupBtn.style.boxShadow = "0 3px 10px rgba(56,111,164,0.4)");
 newGroupBtn.onmouseleave = () => (newGroupBtn.style.boxShadow = "");
 
-// Insert right after the online users list
-onlineUsersList.insertAdjacentElement("afterend", groupsHeader);
+discoverList.insertAdjacentElement("afterend", groupsHeader);
 groupsHeader.insertAdjacentElement("afterend", groupsList);
 groupsList.insertAdjacentElement("afterend", newGroupBtn);
 
@@ -499,7 +825,6 @@ let groupsMeta = {};                      // key -> { id, members, createdBy, cr
 function parseMembers(raw) {
   if (!raw) return [];
   const arr = raw.split(",").map(s => s.trim()).filter(Boolean);
-  // normalize: keep original case for display, Firestore keys are usernames as-is
   const unique = Array.from(new Set(arr)).filter(u => u.length <= 32);
   return unique;
 }
@@ -514,7 +839,6 @@ newGroupBtn.onclick = async () => {
   const extra = prompt("Add members (comma-separated usernames), optional:");
   const members = parseMembers(extra).filter(u => u !== loggedInUser);
   try {
-    // create or merge, always ensure creator is a member
     await setDoc(doc(db, "groups", name), {
       members: [loggedInUser],
       createdBy: loggedInUser,
@@ -530,7 +854,7 @@ newGroupBtn.onclick = async () => {
   }
 };
 
-// Live groups list
+// Live groups list (incremental render could be added later; keep simple for now)
 onSnapshot(collection(db, "groups"), (snap) => {
   groupsList.innerHTML = "";
   myGroups = new Set();
@@ -571,14 +895,11 @@ onSnapshot(collection(db, "groups"), (snap) => {
       unreadHolder.className = "unread-holder";
       right.appendChild(unreadHolder);
 
-      // Manage buttons
       const mkBtn = (txt, title) => {
         const b = document.createElement("button");
         b.textContent = txt;
         b.title = title;
-        b.style.cssText = "margin-left:6px;border:none;background:#4f5f76;color:#fff;padding:2px 6px;font-size:12px;border-radius:6px;cursor:pointer;";
-        b.onmouseenter = () => b.style.background = "#6b7a98";
-        b.onmouseleave = () => b.style.background = "#4f5f76";
+        b.className = "action-btn";
         return b;
       };
 
@@ -588,12 +909,8 @@ onSnapshot(collection(db, "groups"), (snap) => {
         const raw = prompt("Usernames to invite (comma-separated):");
         const toAdd = parseMembers(raw).filter(Boolean);
         if (!toAdd.length) return;
-        try {
-          await updateDoc(doc(db, "groups", id), { members: arrayUnion(...toAdd) });
-        } catch (err) {
-          console.error(err);
-          alert("Failed to invite.");
-        }
+        try { await updateDoc(doc(db, "groups", id), { members: arrayUnion(...toAdd) }); }
+        catch (err) { console.error(err); alert("Failed to invite."); }
       };
       right.appendChild(inviteBtn);
 
@@ -604,14 +921,9 @@ onSnapshot(collection(db, "groups"), (snap) => {
         try {
           await updateDoc(doc(db, "groups", id), { members: arrayRemove(loggedInUser) });
           if (activeTab === key) {
-            activeTab = "all";
-            highlightActiveTab();
-            displayMessages();
+            activeTab = "all"; highlightActiveTab(); displayMessages();
           }
-        } catch (err) {
-          console.error(err);
-          alert("Failed to leave.");
-        }
+        } catch (err) { console.error(err); alert("Failed to leave."); }
       };
       right.appendChild(leaveBtn);
 
@@ -624,14 +936,9 @@ onSnapshot(collection(db, "groups"), (snap) => {
           try {
             await deleteDoc(doc(db, "groups", id));
             if (activeTab === key) {
-              activeTab = "all";
-              highlightActiveTab();
-              displayMessages();
+              activeTab = "all"; highlightActiveTab(); displayMessages();
             }
-          } catch (err) {
-            console.error(err);
-            alert("Failed to delete group.");
-          }
+          } catch (err) { console.error(err); alert("Failed to delete group."); }
         };
         right.appendChild(delBtn);
       }
@@ -650,7 +957,6 @@ const tabsContainer = document.getElementById("tabs");
 let openTabs = {};
 let activeTab = "all";
 
-// Ensure a human-friendly label
 function labelForTab(key) {
   if (key === "all") return "All Chat";
   if (isGroupKey(key)) return `#${groupNameFromKey(key)}`;
@@ -672,11 +978,7 @@ function openTab(key) {
         e.stopPropagation();
         tabsContainer.removeChild(tab);
         delete openTabs[key];
-        if (activeTab === key) {
-          activeTab = "all";
-          highlightActiveTab();
-          displayMessages();
-        }
+        if (activeTab === key) { activeTab = "all"; highlightActiveTab(); displayMessages(); }
       };
       tab.appendChild(closeBtn);
     }
@@ -711,18 +1013,15 @@ function highlightActiveTab() {
 const notesList = document.getElementById("notesList");
 let allMessages = [];
 
-/* Send message */
 async function sendMessage() {
   let text = document.getElementById("noteInput").value.trim();
   if (!text) return;
 
-  // Prevent sending to a group you are not in (edge case)
   if (isGroupKey(activeTab) && !myGroups.has(activeTab)) {
     alert("You are not a member of this group.");
     return;
   }
 
-  // If user pasted a URL, treat it as an attachment (still free)
   if (looksLikeUrl(text)) {
     await addDoc(collection(db, "messages"), {
       text: "",
@@ -753,13 +1052,9 @@ async function sendMessage() {
 
 document.getElementById("sendBtn").onclick = sendMessage;
 document.getElementById("noteInput").addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
-    e.preventDefault();
-    sendMessage();
-  }
+  if (e.key === "Enter") { e.preventDefault(); sendMessage(); }
 });
 
-/* Messages listener (auto-delete after 1 hour) */
 const q = query(collection(db, "messages"), orderBy("timestamp"));
 onSnapshot(q, async (snapshot) => {
   allMessages = [];
@@ -799,11 +1094,9 @@ function displayMessages() {
 
     if (shouldShow) {
       renderMessage({ id }, data);
-      // If we just viewed it, clear unread bookkeeping for this key
       const key = isBroadcast ? "all" : data.to;
       if (unreadMessageIds[key]) unreadMessageIds[key].delete(id);
     } else {
-      // Count unread for DMs to me (not my own)
       if (isDMToMe) {
         if (!unreadMessageIds[data.from]) unreadMessageIds[data.from] = new Set();
         if (!unreadMessageIds[data.from].has(id)) {
@@ -811,7 +1104,6 @@ function displayMessages() {
           unreadCounts[data.from] = (unreadCounts[data.from] || 0) + 1;
         }
       }
-      // Count unread for broadcast when I'm not on All and it's not my own
       if (isBroadcast && activeTab !== "all" && data.from !== loggedInUser) {
         if (!unreadMessageIds["all"]) unreadMessageIds["all"] = new Set();
         if (!unreadMessageIds["all"].has(id)) {
@@ -819,7 +1111,6 @@ function displayMessages() {
           unreadCounts["all"] = (unreadCounts["all"] || 0) + 1;
         }
       }
-      // Count unread for groups I'm in (not my own)
       if (isGroupMsg && myGroups.has(data.to) && data.from !== loggedInUser && activeTab !== data.to) {
         if (!unreadMessageIds[data.to]) unreadMessageIds[data.to] = new Set();
         if (!unreadMessageIds[data.to].has(id)) {
@@ -834,7 +1125,6 @@ function displayMessages() {
   notesList.scrollTop = notesList.scrollHeight;
 }
 
-/* Render single message */
 function renderMessage(docSnap, data) {
   const div = document.createElement("div");
   div.className = "note-item";
@@ -849,14 +1139,12 @@ function renderMessage(docSnap, data) {
     const gName = groupNameFromKey(data.to);
     content.textContent = `#${gName} • ${data.from}: ${data.text || (data.fileName ? data.fileName : "")}`;
   } else if (data.to !== "all" && data.to !== loggedInUser && data.from === loggedInUser) {
-    // Sent DM (viewing in DM tab)
     content.textContent = `${data.from} → ${data.to}: ${data.text || (data.fileName ? data.fileName : "")}`;
   } else {
     content.textContent = `${data.from}: ${data.text || (data.fileName ? data.fileName : "")}`;
   }
   div.appendChild(content);
 
-  // File link/preview if present (URL-based, free)
   if (data.fileURL) {
     const sep = document.createTextNode(" ");
     div.appendChild(sep);
@@ -888,7 +1176,7 @@ function renderMessage(docSnap, data) {
   if (data.from === loggedInUser) div.classList.add("own-message");
   else if (data.to === loggedInUser && data.to !== "all") div.classList.add("private-message");
 
-  if (data.from === loggedInUser || isAdmin) {
+  if (data.from === ADMIN_USER || data.from === loggedInUser || isAdmin) {
     const delBtn = document.createElement("button");
     delBtn.textContent = "Delete";
     delBtn.onclick = () => deleteDoc(doc(db, "messages", docSnap.id));
@@ -898,7 +1186,6 @@ function renderMessage(docSnap, data) {
   notesList.appendChild(div);
 }
 
-/* Unread badges */
 function updateUnreadBadge(key) {
   const count = clamp(unreadCounts[key] || 0, 0, 999);
   const formatCount = (n) => (n > 99 ? "99+" : n);
@@ -910,26 +1197,20 @@ function updateUnreadBadge(key) {
     return badge;
   }
 
-  // Tabs
   if (openTabs[key]) {
     const tab = openTabs[key];
     let badge = tab.querySelector(".unread-badge");
-    if (count > 0) {
-      if (!badge) tab.appendChild(createUnreadBadge(count));
-      else badge.textContent = formatCount(count);
-    } else if (badge) badge.remove();
+    if (count > 0) { if (!badge) tab.appendChild(createUnreadBadge(count)); else badge.textContent = formatCount(count); }
+    else if (badge) badge.remove();
   }
 
-  // Sidebar rows (users, all, and groups share same selector via data-user)
   const row = document.querySelector(`.online-user[data-user="${CSS.escape(key)}"]`);
   if (row) {
     const holder = row.querySelector(".unread-holder");
     if (holder) {
       let badge = holder.querySelector(".unread-badge");
-      if (count > 0) {
-        if (!badge) holder.appendChild(createUnreadBadge(count));
-        else badge.textContent = formatCount(count);
-      } else if (badge) badge.remove();
+      if (count > 0) { if (!badge) holder.appendChild(createUnreadBadge(count)); else badge.textContent = formatCount(count); }
+      else if (badge) badge.remove();
     }
   }
 }
@@ -940,14 +1221,12 @@ openTab("all");
 
 /* Logout */
 document.getElementById("logoutBtn").onclick = async () => {
-  try {
-    await deleteDoc(doc(db, "onlineUsers", loggedInUser));
-  } catch (_) {}
+  try { await deleteDoc(doc(db, "onlineUsers", loggedInUser)); } catch(_) {}
   localStorage.removeItem("loggedInUser");
   window.location.href = "login.html";
 };
 
-/* Attachments on free plan: paste a URL */
+/* Attachments (paste a URL) */
 const attachBtn = document.getElementById("attachBtn");
 attachBtn.onclick = async () => {
   const url = prompt("Paste a direct link to an image/file (e.g., https://i.imgur.com/abc123.png):");
@@ -968,6 +1247,25 @@ window.changeBackground = function changeBackground() {
   const val = document.getElementById("bgSelector").value;
   notesList2.style.backgroundColor = val;
 };
+
+/* News modal behavior */
+const NEWS_VERSION = "1"; // bump when you change content
+const newsOverlay = document.getElementById("newsOverlay");
+const showNews = () => { newsOverlay.style.display = "flex"; };
+const hideNews = () => { newsOverlay.style.display = "none"; };
+
+// Open once if not seen
+if (localStorage.getItem("kitchatty_news_version") !== NEWS_VERSION) {
+  showNews();
+}
+
+document.getElementById("closeNewsBtn").onclick = hideNews;
+document.getElementById("ackNewsBtn").onclick = () => { hideNews(); localStorage.setItem("kitchatty_news_version", NEWS_VERSION); };
+document.getElementById("dontShowNewsBtn").onclick = () => { localStorage.setItem("kitchatty_news_version", NEWS_VERSION); hideNews(); };
+document.getElementById("showNewsBtn").onclick = showNews;
+
+// Escape key closes
+window.addEventListener("keydown", (e) => { if (e.key === "Escape") hideNews(); });
 
 /* Lightweight runtime checks */
 console.assert(typeof window.changeBackground === "function", "changeBackground not attached to window");
