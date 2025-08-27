@@ -14,10 +14,58 @@ body {
   color: #f5f5f5;
   overflow: hidden;
 }
+#app {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+  transition: margin-right 0.3s ease;
+}
+
+#sidebar {
+  width: 320px; /* make wider if needed */
+  background: #0d1b3d;
+  position: fixed;
+  top: 0;
+  right: 0;   /* right side instead of left */
+  bottom: 0;
+  transition: transform 0.3s ease;
+  z-index: 2;
+}
+
+#sidebar.hidden {
+  transform: translateX(100%); /* slide out to the right */
+}
+
+#main {
+  flex: 1;
+  background: #091f36;
+  display: flex;
+  flex-direction: column;
+  margin-right: 320px; /* shift chat left to make space */
+  transition: margin-right 0.3s ease;
+}
+
+#sidebar.hidden ~ #main {
+  margin-right: 0; /* when sidebar hidden, chat expands */
+}
+
+#toggleSidebar {
+  position: absolute;
+  top: 10px;
+  right: 10px; /* button on right now */
+  background: #2196f3;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: white;
+  z-index: 3;
+}
+
 
 /* Sidebar */
 #sidebar {
-  width: 280px;
+  width: 350px;
   background: rgba(15, 40, 98, 0.95);
   border-right: 1px solid #4f5f76;
   padding: 18px;
@@ -66,6 +114,36 @@ body {
 
 .last-seen { font-size: 11px; color: #ccc; display: block; margin-top: 3px; }
 .admin-badge { font-size: 11px; font-weight: bold; color: #ffcc00; margin-left: 6px; }
+.friend-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #1b3a73;
+  padding: 8px 12px;
+  border-radius: 8px;
+  margin-bottom: 6px;
+}
+
+.friend-entry .avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  margin-right: 8px;
+}
+
+.friend-entry button {
+  background: #2196f3;
+  border: none;
+  border-radius: 6px;
+  padding: 4px 10px;
+  color: white;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.friend-entry button:hover {
+  background: #0d8ae5;
+}
 
 /* Small inline buttons */
 .action-btn {
@@ -314,7 +392,7 @@ body {
 </style>
 </head>
 <body>
-
+<button id="toggleSidebar">☰</button>
 <div id="sidebar">
   <h3>Friends</h3>
   <div id="friendControls">
@@ -566,65 +644,44 @@ function sortUsersByPresence(usernames) {
 
 function buildUserRow(user, opts = {}) {
   const meta = presence[user] || { lastActive: 0, avatar: `https://i.pravatar.cc/30?u=${user}` };
-
   const div = document.createElement("div");
   div.className = "online-user";
   div.dataset.user = user;
 
-  const left = document.createElement("div");
-  left.style.display = "flex";
-  left.style.flexDirection = "column";
+  const avatar = document.createElement("img");
+  avatar.src = meta.avatar;
+  avatar.className = "avatar";
 
-  const name = document.createElement("span");
-  const now = Date.now();
-  const isOnline = now - (meta.lastActive || 0) <= 60*1000;
-  name.textContent = user + (isOnline ? " (online)" : "");
-  left.appendChild(name);
-
-  if (!isOnline && meta.lastActive) {
-    const seen = document.createElement("span");
-    seen.className = "last-seen";
-    seen.textContent = `(last seen ${formatLastSeen(now - meta.lastActive)})`;
-    left.appendChild(seen);
-  }
-
-  div.appendChild(left);
+  const info = document.createElement("span");
+  info.textContent = `${user} ${meta.online ? "(online)" : "(last seen " + timeAgo(meta.lastActive) + ")"}`;
 
   const right = document.createElement("div");
-  right.style.display = "flex";
-  right.style.alignItems = "center";
+  right.className = "actions";
 
-  if (user === ADMIN_USER) {
-    const badge = document.createElement("span");
-    badge.className = "admin-badge";
-    badge.textContent = "[ADMIN]";
-    right.appendChild(badge);
-  }
-
-  const unreadHolder = document.createElement("span");
-  unreadHolder.className = "unread-holder";
-  right.appendChild(unreadHolder);
-
-
-  // Optional trailing buttons
+  // Add optional action buttons
   (opts.buttons || []).forEach((btnDef) => {
     const b = document.createElement("button");
     b.className = "action-btn";
     b.textContent = btnDef.text;
-    b.title = btnDef.title || "";
-    b.onclick = (e) => { e.stopPropagation(); btnDef.onClick && btnDef.onClick(); };
+    b.onclick = (e) => {
+      e.stopPropagation(); // stop row click
+      btnDef.onClick && btnDef.onClick();
+    };
     right.appendChild(b);
   });
 
-  const avatarImg = document.createElement("img");
-  avatarImg.src = meta.avatar;
-  avatarImg.style.marginRight = "8px";
-  avatarImg.style.borderRadius = "800px";
-  div.prepend(avatarImg);
+  div.appendChild(avatar);
+  div.appendChild(info);
+  div.appendChild(right);
 
-  div.onclick = () => openTab(user);
+  // Only allow row click if not explicitly disabled
+  if (!opts.preventRowClick) {
+    div.onclick = () => openTab(user);
+  }
+
   return div;
 }
+
 
 function renderFriends() {
   friendsList.innerHTML = "";
@@ -712,12 +769,13 @@ sortUsersByPresence(friendsRequestedIn).forEach((user) => {
 
 
 function renderDiscover() {
-  const allOnline = new Set(Object.keys(presence)); // everyone online
-  const notFriends = [...allOnline].filter(u => !friendsAccepted.has(u) && u !== loggedInUser);
+  const allOnline = new Set(Object.keys(presence));
+  const notFriends = [...allOnline].filter(
+    (u) => !friendsAccepted.has(u) && u !== loggedInUser
+  );
   const sorted = sortUsersByPresence(notFriends);
 
   discoverList.innerHTML = "";
-
   sorted.forEach((user) => {
     const alreadyPending = friendsPendingOut.has(user);
     const alreadyIncoming = friendsRequestedIn.has(user);
@@ -728,8 +786,9 @@ function renderDiscover() {
           ? { text: "Pending…", onClick: () => {} }
           : alreadyIncoming
           ? { text: "Accept", onClick: () => respondToFriendRequest(user, true) }
-          : { text: "Add", onClick: () => sendFriendRequest(user) }
+          : { text: "Add", onClick: () => sendFriendRequest(user) },
       ],
+      preventRowClick: true, // disable row click for discover list
     });
 
     discoverList.appendChild(row);
@@ -743,6 +802,7 @@ function renderDiscover() {
     discoverList.appendChild(msg);
   }
 }
+
 
 async function sendFriendRequest(toUser) {
   if (!toUser || toUser === loggedInUser) return;
@@ -1072,6 +1132,19 @@ if (isDM && !isFriend) {
 
   document.getElementById("noteInput").value = "";
 }
+
+document.getElementById("toggleSidebar").addEventListener("click", () => {
+  const sidebar = document.getElementById("sidebar");
+  const main = document.getElementById("main");
+
+  sidebar.classList.toggle("hidden");
+
+  if (sidebar.classList.contains("hidden")) {
+    main.style.marginLeft = "0";
+  } else {
+    main.style.marginLeft = "320px"; // same width as sidebar
+  }
+});
 
 
 document.getElementById("sendBtn").onclick = sendMessage;
