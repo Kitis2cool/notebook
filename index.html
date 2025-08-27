@@ -1356,20 +1356,21 @@ function renderMessage(docSnap, data) {
   }
 
   // --- Styling for special cases ---
-  if (data.from === ADMIN_USER) div.classList.add("admin-message");
-  if (data.from === loggedInUser) div.classList.add("own-message");
-  else if (data.to === loggedInUser && data.to !== "all") div.classList.add("private-message");
+if (data.from === ADMIN_USER) div.classList.add("admin-message");
+if (data.from === loggedInUser) div.classList.add("own-message");
+else if (data.to === loggedInUser && data.to !== "all") div.classList.add("private-message");
 
-  // --- Delete button ---
-  if (data.from === ADMIN_USER || data.from === loggedInUser || isAdmin) {
+// --- Delete button ---
+if (isAdmin || data.from === loggedInUser) {
     const delBtn = document.createElement("button");
     delBtn.textContent = "Delete";
     delBtn.onclick = () => deleteDoc(doc(db, "messages", docSnap.id));
     div.appendChild(delBtn);
-  }
+}
+
 
   notesList.appendChild(div);
-}
+}z
 
 
 function updateUnreadBadge(key) {
