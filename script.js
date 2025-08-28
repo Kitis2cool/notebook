@@ -30,41 +30,33 @@ if (!loggedInUser) window.location.href = "login.html";
 document.getElementById("username").value = loggedInUser;
 
 // Ensure user doc exists
-await setDoc(
-  doc(db, "users", loggedInUser),
-  { createdAt: Date.now() },
-  { merge: true }
-);
+await setDoc(doc(db, "users", loggedInUser), { createdAt: Date.now() }, { merge: true });
 
 // === Check admin status ===
 async function checkAdmin(username) {
   try {
-    // Try Firestore "admins" collection first
-    const adminRef = doc(db, "admins", username);
-    const snap = await getDoc(adminRef);
-
-    if (snap.exists()) {
-      return true; // Found in Firestore
-    }
-
-    // Fallback: check local array
+    const snap = await getDoc(doc(db, "admins", username));
+    if (snap.exists()) return true; // Found in Firestore
     return LOCAL_ADMIN_USERS.includes(username);
   } catch (err) {
     console.error("Error checking admin:", err);
-    // If Firestore fails, fallback to local array
     return LOCAL_ADMIN_USERS.includes(username);
   }
 }
 
-// Run admin check
-isAdmin = await checkAdmin(loggedInUser);
+// Run admin check and expose globally
+window.isAdmin = await checkAdmin(loggedInUser);
 
-// === Example usage ===
-if (isAdmin) {
+if (window.isAdmin) {
   console.log(`${loggedInUser} is an admin ✅`);
 } else {
   console.log(`${loggedInUser} is a regular user ❌`);
 }
+
+// Fire event for other scripts
+document.dispatchEvent(new CustomEvent("admin-ready", {
+  detail: { isAdmin: window.isAdmin, user: loggedInUser }
+}));
 
 /* ===== Helpers ===== */
 const looksLikeUrl = (text = "") => /^https?:\/\/\S+$/i.test(text.trim());
@@ -1343,6 +1335,7 @@ function watchMessages(chatId) {
     }
   );
 }
+
 
 
 
