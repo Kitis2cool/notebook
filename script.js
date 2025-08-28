@@ -232,6 +232,7 @@ function buildUserRow(user, opts = {}) {
   const savedAvatar = localStorage.getItem(`avatar_${user}`);
   const defaultAvatar = `https://i.pravatar.cc/30?u=${user}`;
   const meta = presence[user] || { lastActive: 0 };
+  const loggedInUser = localStorage.getItem("loggedInUser");
 
   const div = document.createElement("div");
   div.className = "online-user";
@@ -259,6 +260,9 @@ function buildUserRow(user, opts = {}) {
 
   // Add buttons from opts.buttons
   (opts.buttons || []).forEach((btnDef) => {
+    // Only show Logout button for the logged-in user
+    if (btnDef.text === "Logout" && user !== loggedInUser) return;
+
     const b = document.createElement("button");
     b.className = "action-btn";
     b.textContent = btnDef.text;
@@ -286,7 +290,7 @@ function buildUserRow(user, opts = {}) {
       e.stopPropagation();
       if (btnDef.text === "Logout") {
         try {
-          await setDoc(doc(db, "onlineUsers", user), { online: false }, { merge: true });
+          await setDoc(doc(db, "onlineUsers", loggedInUser), { online: false }, { merge: true });
         } catch (err) {
           console.warn("Logout presence update failed:", err);
         } finally {
@@ -312,7 +316,21 @@ function buildUserRow(user, opts = {}) {
   return div;
 }
 
+const logoutBtn = document.getElementById("logoutBtn");
 
+logoutBtn.onclick = async () => {
+  try {
+    // Mark the user offline in Firestore
+    await setDoc(doc(db, "onlineUsers", loggedInUser), { online: false }, { merge: true });
+  } catch (err) {
+    console.warn("Failed to update online status:", err);
+  } finally {
+    // Remove local login info
+    localStorage.removeItem("loggedInUser");
+    // Redirect to login page
+    window.location.href = "login.html";
+  }
+};
 
 
 
