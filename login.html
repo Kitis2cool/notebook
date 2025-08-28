@@ -1,273 +1,285 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Login - Kitchatty</title>
-    <style>
-        body {
-            background: linear-gradient(135deg, #091f36, #0d284d);
-            background-image: url("434975.webp");
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            color: #fff;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-        }
+<meta charset="UTF-8">
+<title>Login - Kitchatty</title>
+<style>
+/* Base styles */
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    width: 100%;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: radial-gradient(circle at top left, #0d0d0d, #1a1a1a 50%, #0a0a0a 100%);
+    overflow: hidden;
+    color: #fff;
+    position: relative;
+}
 
-        .inputFields {
-            background: rgba(58, 57, 58, 0.6);
-            padding: 40px;
-            border-radius: 16px;
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
-            width: 320px;
-            text-align: center;
-            backdrop-filter: blur(10px);
-            animation: fadeIn 0.8s ease-in-out;
-        }
+/* Background glowing orbs */
+body::before,
+body::after {
+    content: '';
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.25;
+    animation: float 20s ease-in-out infinite alternate;
+    z-index: 0;
+}
+body::before {
+    width: 400px;
+    height: 400px;
+    top: -120px;
+    left: -120px;
+    background: #ff8c00;
+    animation-duration: 26s;
+}
+body::after {
+    width: 320px;
+    height: 320px;
+    bottom: -120px;
+    right: -120px;
+    background: #ff4500;
+    animation-duration: 18s;
+}
+@keyframes float {
+    from { transform: translateY(0) translateX(0); }
+    to { transform: translateY(-50px) translateX(50px); }
+}
 
-        h1 {
-            margin-bottom: 25px;
-            font-size: 28px;
-            color: #54f591;
-            letter-spacing: 1px;
-        }
+/* Centering container */
+.container {
+    height: 100%;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    z-index: 1;
+}
 
-        input {
-            width: 90%;
-            height: 40px;
-            margin: 10px 0;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            padding: 0 12px;
-            outline: none;
-            background: rgba(255, 255, 255, 0.1);
-            color: #fff;
-            transition: 0.3s;
-        }
+/* Login card */
+.login-card {
+    background: rgba(15,15,15,0.92);
+    padding: 40px 30px;
+    border-radius: 20px;
+    width: 360px;
+    max-width: 90vw;
+    text-align: center;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.8), 0 0 25px rgba(255,140,0,0.25);
+    animation: fadeInUp 0.8s ease-out;
+    backdrop-filter: blur(6px);
+    box-sizing: border-box;
+}
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(40px); }
+    to { opacity: 1; transform: translateY(0); }
+}
 
-        input:focus {
-            background: rgba(255, 255, 255, 0.2);
-            border: 1px solid #54f591;
-        }
+/* Heading */
+h1 {
+    color: #ffa733;
+    margin-bottom: 25px;
+    font-size: 28px;
+    text-shadow: 0 0 15px rgba(255,140,0,0.4);
+}
 
-        .password-wrapper {
-            position: relative;
-            width: 90%;
-            margin: auto;
-        }
+/* Inputs */
+input {
+    width: 100%;
+    padding: 14px 16px;
+    margin: 12px 0;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    outline: none;
+    background: rgba(255,255,255,0.07);
+    color: #fff;
+    transition: all 0.3s ease;
+    box-sizing: border-box;
+    box-shadow: inset 0 0 6px rgba(0,0,0,0.6);
+}
+input:focus {
+    background: rgba(255,255,255,0.12);
+    box-shadow: 0 0 8px rgba(255,140,0,0.6);
+}
 
-        .togglePassword {
-            position: absolute;
-            right: 12px;
-            top: 50%;
-            transform: translateY(-50%);
-            cursor: pointer;
-            font-size: 18px;
-            color: #ccc;
-        }
+/* Password wrapper */
+.password-wrapper {
+    position: relative;
+    width: 100%;
+}
+.togglePassword {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    font-size: 18px;
+    color: #ffa733;
+    transition: 0.3s;
+}
+.togglePassword:hover {
+    color: #ffbb55;
+}
 
-        .strength {
-            font-size: 14px;
-            margin-top: 5px;
-            font-weight: bold;
-        }
+/* Buttons */
+button {
+    height: 42px;
+    width: 130px;
+    border: none;
+    border-radius: 12px;
+    background: linear-gradient(90deg, #ffa733, #ff7a18);
+    color: #121212;
+    font-size: 16px;
+    font-weight: bold;
+    margin: 10px 5px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+button:hover {
+    background: linear-gradient(90deg, #ffbb55, #ffa733);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(255,140,0,0.5);
+}
+button:active {
+    transform: scale(0.95);
+}
 
-        .strength.weak { color: #ff6b6b; }
-        .strength.medium { color: #f1c40f; }
-        .strength.strong { color: #54f591; }
-
-        .error {
-            margin-top: 10px;
-            font-size: 14px;
-            color: #ff6b6b;
-            display: none;
-        }
-
-        button {
-            height: 40px;
-            width: 120px;
-            border: none;
-            border-radius: 10px;
-            background: #20ff58;
-            color: #091f36;
-            font-size: 16px;
-            font-weight: bold;
-            margin: 10px 5px;
-            cursor: pointer;
-            transition: 0.3s;
-        }
-
-        button:hover {
-            background: #42d57a;
-            transform: translateY(-2px);
-            box-shadow: 0 6px 15px rgba(84, 245, 145, 0.4);
-        }
-
-        button:active {
-            transform: scale(0.95);
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-    </style>
+/* Error + strength text */
+.error {
+    color: #ff6b6b;
+    font-size: 14px;
+    margin: 5px 0;
+    display: none;
+}
+.strength {
+    font-size: 14px;
+    margin: 5px 0;
+}
+.strength.weak { color: #ff4d4d; }
+.strength.medium { color: #ffa733; }
+.strength.strong { color: #4dff88; }
+</style>
 </head>
-
 <body>
-    <div class="inputFields">
-        <h1>Login</h1>
+<div class="container">
+  <div class="login-card">
+      <h1>Login - Kitchatty</h1>
 
-        <input type="text" id="usernameField" placeholder="Username">
-        <div class="error" id="usernameError">⚠️ Username must be at least 3 characters</div>
+      <input type="text" id="usernameField" placeholder="Username">
+      <div class="error" id="usernameError">⚠️ Username must be at least 3 characters</div>
 
-        <div class="password-wrapper">
-            <input type="password" id="passwordField" placeholder="Password">
-            <span class="togglePassword">👁️</span>
-        </div>
-        <div class="strength" id="passwordStrength"></div>
+      <div class="password-wrapper">
+          <input type="password" id="passwordField" placeholder="Password">
+          <span class="togglePassword">👁️</span>
+      </div>
+      <div class="strength" id="passwordStrength"></div>
 
-        <button id="loginBtn">Login</button>
-        <button id="signupBtn">Sign Up</button>
+      <button id="loginBtn">Login</button>
+      <button id="signupBtn">Sign Up</button>
 
-        <div class="error" id="errorMsg"></div>
-    </div>
+      <div class="error" id="errorMsg"></div>
+  </div>
+</div>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
-        // 🔥 Firebase config
-        const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
-            authDomain: "kitisnotebook.firebaseapp.com",
-            projectId: "kitisnotebook",
-            storageBucket: "kitisnotebook.firebasestorage.app",
-            messagingSenderId: "450680847245",
-            appId: "1:450680847245:web:2e4ebb71ccd3a7920bdbc4",
-            measurementId: "G-W3ZVV6N6KK"
-        };
+    const firebaseConfig = {
+        apiKey: "AIzaSyBXhiyGWev_pgR04Xqwq-09cE_oyrLWnU8",
+        authDomain: "kitisnotebook.firebaseapp.com",
+        projectId: "kitisnotebook",
+        storageBucket: "kitisnotebook.firebasestorage.app",
+        messagingSenderId: "450680847245",
+        appId: "1:450680847245:web:2e4ebb71ccd3a7920bdbc4",
+        measurementId: "G-W3ZVV6N6KK"
+    };
 
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
 
-        const errorMsg = document.getElementById("errorMsg");
-        const usernameError = document.getElementById("usernameError");
-        const strengthDisplay = document.getElementById("passwordStrength");
+    const errorMsg = document.getElementById("errorMsg");
+    const usernameError = document.getElementById("usernameError");
+    const strengthDisplay = document.getElementById("passwordStrength");
 
-        function showError(message) {
-            errorMsg.textContent = message;
-            errorMsg.style.display = "block";
-        }
+    function showError(message) {
+        errorMsg.textContent = message;
+        errorMsg.style.display = "block";
+    }
 
-        // ✅ Password strength checker
-        document.getElementById("passwordField").addEventListener("input", (e) => {
-            const val = e.target.value;
-            let strength = "";
-            let className = "";
+    document.getElementById("passwordField").addEventListener("input", (e) => {
+        const val = e.target.value;
+        let strength = "";
+        let className = "";
 
-            if (val.length === 0) {
-                strengthDisplay.textContent = "";
-                return;
-            }
+        if (!val) { strengthDisplay.textContent = ""; return; }
+        if (val.length < 6) { strength = "Weak"; className = "weak"; }
+        else if (val.match(/[A-Z]/) && val.match(/[0-9]/) && val.length >= 8) { strength = "Strong"; className = "strong"; }
+        else { strength = "Medium"; className = "medium"; }
 
-            if (val.length < 6) {
-                strength = "Weak";
-                className = "weak";
-            } else if (val.match(/[A-Z]/) && val.match(/[0-9]/) && val.length >= 8) {
-                strength = "Strong";
-                className = "strong";
-            } else {
-                strength = "Medium";
-                className = "medium";
-            }
+        strengthDisplay.textContent = `Password Strength: ${strength}`;
+        strengthDisplay.className = `strength ${className}`;
+    });
 
-            strengthDisplay.textContent = `Password Strength: ${strength}`;
-            strengthDisplay.className = `strength ${className}`;
-        });
+    async function createAccount() {
+        const username = document.getElementById("usernameField").value.trim();
+        const password = document.getElementById("passwordField").value;
 
-        async function createAccount() {
-            const username = document.getElementById("usernameField").value.trim();
-            const password = document.getElementById("passwordField").value;
+        if (username.length < 3) { usernameError.style.display = "block"; return; }
+        else { usernameError.style.display = "none"; }
 
-            if (username.length < 3) {
-                usernameError.style.display = "block";
-                return;
-            } else {
-                usernameError.style.display = "none";
-            }
+        if (!username || !password) { showError("⚠️ Please enter username and password"); return; }
 
-            if (!username || !password) {
-                showError("⚠️ Please enter username and password");
-                return;
-            }
+        const userRef = doc(db, "users", username);
+        const userSnap = await getDoc(userRef);
 
-            const userRef = doc(db, "users", username);
-            const userSnap = await getDoc(userRef);
+        if (userSnap.exists()) { showError("⚠️ Username already exists."); return; }
 
-            if (userSnap.exists()) {
-                showError("⚠️ Username already exists. Choose another.");
-                return;
-            }
+        await setDoc(userRef, { username, password, createdAt: Date.now() });
+        alert("✅ Account created! You can now login.");
+        document.getElementById("usernameField").value = "";
+        document.getElementById("passwordField").value = "";
+        errorMsg.style.display = "none";
+    }
 
-            await setDoc(userRef, { username, password, createdAt: Date.now() });
-            alert("✅ Account created! You can now login.");
-            document.getElementById("usernameField").value = "";
-            document.getElementById("passwordField").value = "";
-            errorMsg.style.display = "none";
-        }
+    async function login() {
+        const username = document.getElementById("usernameField").value.trim();
+        const password = document.getElementById("passwordField").value;
 
-        async function login() {
-            const username = document.getElementById("usernameField").value.trim();
-            const password = document.getElementById("passwordField").value;
+        if (username.length < 3) { usernameError.style.display = "block"; return; }
+        else { usernameError.style.display = "none"; }
 
-            if (username.length < 3) {
-                usernameError.style.display = "block";
-                return;
-            } else {
-                usernameError.style.display = "none";
-            }
+        if (!username || !password) { showError("⚠️ Please fill in both fields."); return; }
 
-            if (!username || !password) {
-                showError("⚠️ Please fill in both fields.");
-                return;
-            }
+        const userRef = doc(db, "users", username);
+        const userSnap = await getDoc(userRef);
 
-            const userRef = doc(db, "users", username);
-            const userSnap = await getDoc(userRef);
-
-            if (userSnap.exists()) {
-                const data = userSnap.data();
-                if (data.password === password) {
-                    localStorage.setItem("loggedInUser", username);
-                    window.location.href = "index.html";
-                } else {
-                    showError("❌ Wrong password.");
-                }
-            } else {
-                showError("❌ User not found.");
-            }
-        }
-
-        // 👁️ Toggle password visibility
-        document.querySelector(".togglePassword").addEventListener("click", () => {
-            const field = document.getElementById("passwordField");
-            field.type = field.type === "password" ? "text" : "password";
-        });
-
-        document.getElementById("loginBtn").addEventListener("click", login);
-        document.getElementById("signupBtn").addEventListener("click", createAccount);
-
-        window.onload = () => {
-            if (localStorage.getItem("loggedInUser")) {
+        if (userSnap.exists()) {
+            const data = userSnap.data();
+            if (data.password === password) {
+                localStorage.setItem("loggedInUser", username);
                 window.location.href = "index.html";
-            }
+            } else { showError("❌ Wrong password."); }
+        } else { showError("❌ User not found."); }
+    }
+
+    document.querySelector(".togglePassword").addEventListener("click", () => {
+        const field = document.getElementById("passwordField");
+        field.type = field.type === "password" ? "text" : "password";
+    });
+
+    document.getElementById("loginBtn").addEventListener("click", login);
+    document.getElementById("signupBtn").addEventListener("click", createAccount);
+
+    window.onload = () => {
+        if (localStorage.getItem("loggedInUser")) {
+            window.location.href = "index.html";
         }
-    </script>
+    }
+</script>
 </body>
 </html>
