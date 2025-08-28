@@ -59,9 +59,9 @@ let unreadCounts = {};
 let unreadMessageIds = {}; // { key: Set<messageId> }
 /* ===== Profanity filter ===== */
 const bannedWords = [
-  "fuck","bitch","pussy","cock","cum","slut","whore",
-  "france","french","british","asshole","dick","cunt","bastard","motherfucker",
-  "nigger","nigga","chink","spic","fag","faggot","retard"
+  "pussy","cock","cum","slut","whore",
+  "france","french","british","asshole","dick","cunt",
+  "nigger","nigga","chink"
 ];
 function filterProfanity(text) {
   let filtered = text;
@@ -1382,5 +1382,6 @@ function watchMessages(chatId) {
     }
   );
 }
+
 
 
