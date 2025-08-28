@@ -228,7 +228,6 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 });
 
-// --- Modified buildUserRow ---
 function buildUserRow(user, opts = {}) {
   const savedAvatar = localStorage.getItem(`avatar_${user}`);
   const defaultAvatar = `https://i.pravatar.cc/30?u=${user}`;
@@ -238,27 +237,27 @@ function buildUserRow(user, opts = {}) {
   div.className = "online-user";
   div.dataset.user = user;
 
-  // Always use savedAvatar if exists
+  // Avatar
   const avatar = document.createElement("img");
   avatar.src = savedAvatar || defaultAvatar;
   avatar.className = "avatar";
 
+  // Info
   const info = document.createElement("span");
   info.style.color = meta.online ? 'limegreen' : 'gray';
-
   const username = document.createElement("strong");
   username.textContent = user + " ";
-
   const status = document.createElement("span");
   status.textContent = meta.online ? "online" : "(last seen " + timeAgo(meta.lastActive) + ")";
   status.style.fontWeight = "normal";
-
   info.appendChild(username);
   info.appendChild(status);
 
+  // Actions
   const right = document.createElement("div");
   right.className = "actions";
 
+  // Add buttons from opts.buttons
   (opts.buttons || []).forEach((btnDef) => {
     const b = document.createElement("button");
     b.className = "action-btn";
@@ -282,10 +281,23 @@ function buildUserRow(user, opts = {}) {
       b.style.boxShadow = "none";
       b.style.transform = "translateY(0)";
     });
-    b.onclick = (e) => {
+
+    b.onclick = async (e) => {
       e.stopPropagation();
-      btnDef.onClick && btnDef.onClick();
+      if (btnDef.text === "Logout") {
+        try {
+          await setDoc(doc(db, "onlineUsers", user), { online: false }, { merge: true });
+        } catch (err) {
+          console.warn("Logout presence update failed:", err);
+        } finally {
+          localStorage.removeItem("loggedInUser");
+          window.location.href = "login.html";
+        }
+      } else {
+        btnDef.onClick && btnDef.onClick();
+      }
     };
+
     right.appendChild(b);
   });
 
@@ -299,6 +311,8 @@ function buildUserRow(user, opts = {}) {
 
   return div;
 }
+
+
 
 
 
@@ -1139,28 +1153,6 @@ function updateUnreadBadge(user) {
 document.getElementById("chatAllBtn").onclick = () => openTab("all");
 openTab("all");
 
-window.addEventListener("DOMContentLoaded", () => {
-  const logoutBtn = document.getElementById("logoutBtn");
-  if (logoutBtn) {
-    logoutBtn.onclick = async () => {
-      const user = localStorage.getItem("loggedInUser");
-      if (!user) {
-        window.location.href = "login.html";
-        return;
-      }
-
-      try {
-        // Mark offline in presence
-        await setDoc(doc(db, "onlineUsers", user), { online: false }, { merge: true });
-      } catch (err) {
-        console.warn("Logout presence update failed:", err);
-      } finally {
-        localStorage.removeItem("loggedInUser"); // clear session
-        window.location.href = "login.html";     // back to login screen
-      }
-    };
-  }
-});
 
 
 /* Attachments (paste a URL) */
