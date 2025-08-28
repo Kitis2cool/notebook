@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <title>Kitchatty</title>
 <style>
-/* Base layout */
+/* ===== Base Layout ===== */
 body {
   margin: 0;
   display: flex;
@@ -14,67 +14,68 @@ body {
   color: #f5f5f5;
   overflow: hidden;
 }
+
 #app {
   display: flex;
-  height: 100vh;
+  flex: 1;
   overflow: hidden;
-  transition: margin-right 0.3s ease;
-}
-
-
-
-#sidebar.hidden ~ #chatContainer {
-  margin-right: 0; /* expand when sidebar hidden */
+  transition: margin-right 0.4s ease;
 }
 
 #main {
   flex: 1;
-  background: #091f36;
   display: flex;
   flex-direction: column;
-  margin-right: 320px; /* shift chat left to make space */
-  transition: margin-right 0.3s ease;
+  margin-right: 0; /* sidebar hidden initially */
+  background: #091f36;
+  transition: margin-right 0.4s ease;
 }
 
-/* When hidden, move sidebar out of view */
-#sidebar.hidden {
-  transform: translateX(100%);
-}
-
-#toggleSidebar {
-  position: absolute;
-  top: 10px;
-  right: 10px; /* button on right now */
-  background: #2196f3;
-  border: none;
-  padding: 6px 10px;
-  border-radius: 6px;
-  cursor: pointer;
-  color: white;
-  z-index: 3;
-}
-
+/* ===== Sidebar ===== */
 #sidebar {
   position: fixed;
   top: 0;
   right: 0;
   bottom: 0;
-  width: 25%;
-  background: linear-gradient(145deg, rgba(15,40,98,0.95), rgba(30,60,120,0.95));
-  border-radius: 6px 0 0 6px; /* only left side slightly rounded */
-  backdrop-filter: blur(8px);
-  box-shadow: -4px 0 20px rgba(0,0,0,0.25); /* softer shadow */
-  border-left: 1px solid rgba(255,255,255,0.05); /* very subtle light border */
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-  z-index: 2;
+  width: 360px;
+  background: #0f1f38;
+  border-top-left-radius: 16px;
+  border-bottom-left-radius: 16px;
+  box-shadow: -3px 0 25px rgba(0,0,0,0.45);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
   overflow-y: auto;
+  transform: translateX(100%);
+  opacity: 0; /* hide completely */
+  pointer-events: none; /* ignore clicks when hidden */
+  transition: all 0.4s ease;
+  z-index: 900; /* make sure it's above chat but below toggle button */
 }
 
+#sidebar.visible {
+  transform: translateX(0);
+  opacity: 1; /* show fully */
+  pointer-events: auto; /* allow clicks */
+}
 
-/* Slight hover elevation effect */
+/* Scrollbar for sidebar */
+#sidebar::-webkit-scrollbar {
+  width: 8px;
+}
+#sidebar::-webkit-scrollbar-track {
+  background: #0f1f38;
+}
+#sidebar::-webkit-scrollbar-thumb {
+  background: #3a82f7;
+  border-radius: 4px;
+}
+
 #sidebar:hover {
-  box-shadow: 0 12px 30px rgba(0,0,0,0.5);
+  box-shadow: -3px 0 35px rgba(0,0,0,0.55);
 }
+
 #sidebar h3 {
   margin: 18px 0 10px;
   font-size: 16px;
@@ -85,44 +86,118 @@ body {
   letter-spacing: 0.5px;
 }
 
-.unread-badge {
-  background: red;
+/* ===== Sidebar Toggle Button ===== */
+#toggleSidebar {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #3a82f7;
+  border: none;
   color: white;
-  font-size: 12px;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+  transition: all 0.2s;
+  z-index: 1000;
+}
+
+#toggleSidebar:hover {
+  background: #2e6fd1;
+  transform: scale(1.1);
+}
+
+/* ===== Online Users ===== */
+.online-user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: #14254d;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+
+.online-user:hover {
+  background: #1e3a73;
+  transform: translateX(2px);
+}
+
+.online-user.selected {
+  background: #3a82f7;
+  font-weight: 600;
+}
+
+.online-user .avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid #3a82f7;
+}
+
+.online-user .user-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.online-user .username {
+  font-weight: 500;
+  font-size: 14px;
+  color: #fff;
+}
+
+.online-user .last-seen {
+  font-size: 11px;
+  color: #aaa;
+}
+
+.online-user .admin-badge {
+  font-size: 10px;
+  font-weight: bold;
+  color: #ffcc00;
+  margin-left: auto;
+}
+
+/* ===== Badges ===== */
+.unread-badge {
+  background: #3a82f7;
+  color: #fff;
+  font-size: 0.75rem;
   font-weight: bold;
   padding: 2px 6px;
-  border-radius: 50%;
-  margin-left: 4px;
+  border-radius: 12px;
   min-width: 18px;
   text-align: center;
   display: inline-block;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+  transition: all 0.2s;
 }
 
-.online-user {
-  padding: 10px 12px;
-  border-radius: 10px;
-  cursor: pointer;
-  margin: 8px 0;
-  transition: transform 0.2s, background 0.25s;
-  background: rgba(255,255,255,0.05);
-  color: #f5f5f5;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.online-user:hover { background: rgba(255,255,255,0.15); transform: translateX(4px); }
-.online-user.selected { background: #4f5f76; font-weight: bold; }
-
-.last-seen { font-size: 11px; color: #ccc; display: block; margin-top: 3px; }
-.admin-badge { font-size: 11px; font-weight: bold; color: #ffcc00; margin-left: 6px; }
+/* ===== Friend Entries ===== */
 .friend-entry {
   display: flex;
   align-items: center;
   justify-content: space-between;
   background: #1b3a73;
   padding: 8px 12px;
-  border-radius: 8px;
+  border-radius: 12px;
   margin-bottom: 6px;
+  transition: all 0.2s;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.friend-entry:hover {
+  background: #2a4d8c;
+  transform: translateX(2px);
 }
 
 .friend-entry .avatar {
@@ -133,39 +208,28 @@ body {
 }
 
 .friend-entry button {
-  background: #2196f3;
+  background: #3a82f7;
   border: none;
   border-radius: 6px;
   padding: 4px 10px;
-  color: white;
-  cursor: pointer;
+  color: #fff;
   font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
 .friend-entry button:hover {
-  background: #0d8ae5;
+  background: #1e6cd1;
 }
 
-/* Small inline buttons */
-.action-btn {
-  margin-left: 6px;
-  border: none;
-  background: #4f5f76;
-  color: #fff;
-  padding: 3px 8px;
-  font-size: 12px;
-  border-radius: 6px;
-  cursor: pointer;
-}
-.action-btn:hover { background: #6b7a98; }
-
-/* Controls row */
+/* ===== Friend Controls ===== */
 #friendControls {
   display: flex;
   gap: 6px;
   align-items: center;
   margin-bottom: 8px;
 }
+
 #friendInput {
   flex: 1;
   padding: 8px;
@@ -174,6 +238,7 @@ body {
   background: #091f36;
   color: #fff;
 }
+
 #addFriendBtn, #toggleDiscoverBtn {
   padding: 8px 10px;
   border-radius: 6px;
@@ -183,110 +248,137 @@ body {
   cursor: pointer;
   font-weight: bold;
 }
-#addFriendBtn:hover, #toggleDiscoverBtn:hover { filter: brightness(1.1); }
 
-/* Chat All Button */
+#addFriendBtn:hover, #toggleDiscoverBtn:hover {
+  filter: brightness(1.1);
+}
+
+/* ===== Chat All Button ===== */
 #chatAllBtn {
   width: 100%;
   padding: 12px;
   margin-top: 14px;
   border: none;
-  background: linear-gradient(90deg, #9e363a, #7a272a);
-  color: #fff;
-  font-weight: bold;
   border-radius: 8px;
+  font-weight: bold;
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
+  color: #fff;
+  background: linear-gradient(90deg, #9e363a, #7a272a);
+  transition: all 0.2s;
 }
-#chatAllBtn:hover { transform: scale(1.05); box-shadow: 0 3px 10px rgba(158,54,58,0.4); }
 
+#chatAllBtn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 3px 10px rgba(158,54,58,0.4);
+}
+
+/* ===== Chat Container ===== */
 #chatContainer {
   flex: 1;
   display: flex;
   flex-direction: column;
   background: linear-gradient(180deg, #091f36, #0f2862);
   color: #f5f5f5;
-  margin-right: 350px; /* same as sidebar width */
-  transition: margin-right 0.3s ease;
+  margin-right: 0;
+  transition: all 0.4s ease;
 }
 
-/* Tabs */
+#sidebar.visible ~ #chatContainer {
+  margin-right: 360px;
+}
+
+/* ===== Tabs ===== */
 #tabs {
   display: flex;
   background: #0f2862;
   border-bottom: 1px solid #4f5f76;
-  padding: 6px;
+  padding: 6px 10px;
   gap: 8px;
 }
+
 .tab {
-  padding: 8px 12px;
+  padding: 8px 14px;
   cursor: pointer;
-  border-right: 1px solid #4f5f76;
   background: rgba(15, 40, 98, 0.9);
-  font-size: 14px;
+  border-radius: 10px;
   display: inline-flex;
   align-items: center;
   color: #eee;
-  transition: background 0.25s, color 0.25s, transform 0.2s;
-  border-radius: 8px;
-  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  gap: 6px;
+  transition: all 0.2s;
 }
-.tab:hover { background: #4f5f76; transform: translateY(-2px); }
+
+.tab:hover {
+  background: #4f5f76;
+  transform: translateY(-2px);
+}
+
 .tab.active {
   background: #091f36;
+  border-bottom: 3px solid #3a82f7;
   font-weight: 600;
-  border-bottom: 3px solid #9e363a;
   color: #fff;
 }
+
 .tab .close-btn {
   margin-left: 8px;
-  color: #9e363a;
-  cursor: pointer;
+  color: #3a82f7;
   font-size: 13px;
+  cursor: pointer;
   transition: color 0.2s;
 }
-.tab .close-btn:hover { color: #ff5c5c; }
 
-/* Messages list */
+.tab .close-btn:hover {
+  color: #ff5c5c;
+}
+
+/* ===== Messages ===== */
 #notesList {
   flex: 1;
-  overflow-y: auto;
-  padding: 18px;
   display: flex;
   flex-direction: column;
   gap: 12px;
+  padding: 18px;
+  overflow-y: auto;
 }
 
-/* Message bubbles */
 .note-item {
   max-width: 70%;
   padding: 10px 14px;
   border-radius: 16px;
   font-size: 14px;
   line-height: 1.4;
-  position: relative;
-  box-shadow: 0 3px 6px rgba(0,0,0,0.25);
-  transition: transform 0.2s;
   display: flex;
   gap: 10px;
   align-items: center;
+  box-shadow: 0 3px 6px rgba(0,0,0,0.25);
+  transition: transform 0.2s;
 }
-.note-item:hover { transform: translateY(-2px); }
 
-.note-item img { width: 30px; height: 30px; border-radius: 50%; }
+.note-item:hover {
+  transform: translateY(-2px);
+}
+
+.note-item img {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+}
 
 .note-item:not(.own-message) {
   align-self: flex-start;
   background: #4f5f76;
-  color: #fff;
   border-bottom-left-radius: 4px;
 }
+
 .own-message {
   align-self: flex-end;
   background: #0f2862;
-  color: #fff;
   border-bottom-right-radius: 4px;
 }
+
 .private-message {
   background: #9e363a;
   color: #fff;
@@ -294,36 +386,45 @@ body {
   border-radius: 12px;
   font-weight: bold;
 }
-.admin-message { border: 2px solid #ffcc00; background: #333366; font-weight: bold; }
 
-/* Delete button */
+.admin-message {
+  border: 2px solid #ffcc00;
+  background: #333366;
+  font-weight: bold;
+}
+
 .note-item button {
   margin-left: 10px;
   border: none;
+  border-radius: 6px;
   background: #9e363a;
   color: #fff;
   padding: 4px 8px;
   font-size: 12px;
-  border-radius: 6px;
   cursor: pointer;
   transition: background 0.2s;
 }
-.note-item button:hover { background: #7a272a; }
 
-/* Chat bar */
+.note-item button:hover {
+  background: #7a272a;
+}
+
+/* ===== Chat Bar ===== */
 #chatBar {
   display: flex;
   padding: 12px;
-  background: rgba(79,95,118,0.9);
-  align-items: center;
   gap: 8px;
+  align-items: center;
+  background: rgba(15, 40, 98, 0.9);
   border-top: 1px solid #333;
   backdrop-filter: blur(6px);
+  border-radius: 0 0 12px 12px;
 }
+
 #username {
   width: 110px;
   padding: 6px;
-  border-radius: 6px;
+  border-radius: 8px;
   border: 1px solid #333;
   background: #091f36;
   color: #fff;
@@ -331,37 +432,71 @@ body {
   font-size: 13px;
   font-weight: 500;
 }
+
 #noteInput {
   flex: 1;
   height: 38px;
-  border-radius: 6px;
-  border: 1px solid #333;
   padding: 0 12px;
   font-size: 14px;
+  border-radius: 8px;
+  border: 1px solid #333;
   background: #0f2862;
   color: #fff;
-  transition: border 0.2s, background 0.2s;
+  transition: all 0.2s;
 }
-#noteInput:focus { border-color: #9e363a; outline: none; background: #091f36; }
+
+#noteInput:focus {
+  outline: none;
+  border-color: #3a82f7;
+  background: #091f36;
+}
 
 #sendBtn, #logoutBtn, #attachBtn {
-  padding: 0 16px;
   height: 38px;
-  border-radius: 6px;
-  cursor: pointer;
-  background: linear-gradient(90deg, #9e363a, #7a272a);
-  color: #fff;
-  font-weight: bold;
+  padding: 0 16px;
+  border-radius: 8px;
   border: none;
-  transition: transform 0.2s, box-shadow 0.2s;
+  cursor: pointer;
+  font-weight: bold;
+  color: #fff;
+  background: #3a82f7;
+  transition: all 0.2s;
 }
+
 #sendBtn:hover, #logoutBtn:hover, #attachBtn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 3px 10px rgba(158,54,58,0.4);
+  box-shadow: 0 3px 10px rgba(58,130,247,0.4);
 }
-.unread-holder { display: flex; align-items: center; margin-left: 8px; }
-.help { font-size: 12px; color: #ccc; margin-top: 8px; line-height: 1.3; }
-.help a { color: #ffcc00; }
+
+/* ===== Misc ===== */
+.unread-holder {
+  display: flex;
+  align-items: center;
+  margin-left: 8px;
+}
+
+.help {
+  font-size: 12px;
+  color: #ccc;
+  margin-top: 8px;
+  line-height: 1.3;
+}
+
+.help a {
+  color: #3a82f7;
+}
+
+.timestamp {
+  font-size: 11px;
+  color: #aaa;
+  margin-left: 6px;
+}
+
+.typing-indicator {
+  font-size: 12px;
+  color: #5fa8d3;
+  margin-top: 4px;
+}
 
 /* ===== Modal (News) ===== */
 #newsOverlay {
@@ -373,6 +508,7 @@ body {
   justify-content: center;
   z-index: 1000;
 }
+
 #newsModal {
   width: min(600px, 90vw);
   max-height: 80vh;
@@ -383,30 +519,42 @@ body {
   box-shadow: 0 10px 30px rgba(0,0,0,0.5);
   padding: 18px 20px;
 }
-#newsModal header { display:flex; align-items:center; justify-content:space-between; }
-#newsModal h2 { margin: 0 0 8px; }
-#closeNewsBtn {
-  border: none; background: #9e363a; color: #fff; padding: 6px 10px; border-radius: 8px; cursor: pointer;
-}
-#dontShowNewsBtn {
-  border: none; background: #4f5f76; color: #fff; padding: 6px 10px; border-radius: 8px; cursor: pointer; margin-right: 8px;
-}
-.timestamp {
-  font-size: 11px;
-  color: #aaa;
-  margin-left: 6px;
-}
-.typing-indicator {
-  font-size: 12px;
-  color: #5fa8d3;
-  margin-top: 4px;
+
+#newsModal header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
+#newsModal h2 {
+  margin: 0 0 8px;
+}
+
+#closeNewsBtn {
+  border: none;
+  background: #9e363a;
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+#dontShowNewsBtn {
+  border: none;
+  background: #4f5f76;
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-right: 8px;
+}
 </style>
+
+
 </head>
 <body>
 <button id="toggleSidebar">☰</button>
-<div id="sidebar">
+<div id="sidebar" class="hidden">
   <h3>Friends</h3>
   <div id="friendControls">
     <input id="friendInput" type="text" placeholder="Add friend by username" maxlength="32" />
@@ -664,7 +812,8 @@ function buildUserRow(user, opts = {}) {
   avatar.className = "avatar";
 
   const info = document.createElement("span");
-  info.textContent = `${user} ${meta.online ? "(online)" : "(last seen " + timeAgo(meta.lastActive) + ")"}`;
+  info.color = 'green'
+  info.textContent = `${user} ${meta.online ? "online" : "(last seen " + timeAgo(meta.lastActive) + ")"}`;
 
   const right = document.createElement("div");
   right.className = "actions";
@@ -876,11 +1025,14 @@ onSnapshot(doc(db, "profiles", loggedInUser), (snap) => {
 
 /* ===== Groups: UI + Data ===== */
 const sidebar = document.getElementById("sidebar");
+
+
 const groupsHeader = document.createElement("h3");
 groupsHeader.textContent = "Groups";
 const groupsList = document.createElement("div");
 groupsList.id = "groupsList";
 
+// + New Group button
 const newGroupBtn = document.createElement("button");
 newGroupBtn.id = "newGroupBtn";
 newGroupBtn.textContent = "+ New Group";
@@ -893,20 +1045,34 @@ newGroupBtn.style.cssText = `
 newGroupBtn.onmouseenter = () => (newGroupBtn.style.boxShadow = "0 3px 10px rgba(56,111,164,0.4)");
 newGroupBtn.onmouseleave = () => (newGroupBtn.style.boxShadow = "");
 
+// Insert into sidebar
 discoverList.insertAdjacentElement("afterend", groupsHeader);
 groupsHeader.insertAdjacentElement("afterend", groupsList);
 groupsList.insertAdjacentElement("afterend", newGroupBtn);
 
+// Data structures
 let myGroups = new Set();                 // e.g., "group:friends"
 let groupsMeta = {};                      // key -> { id, members, createdBy, createdAt }
 
 function parseMembers(raw) {
   if (!raw) return [];
-  const arr = raw.split(",").map(s => s.trim()).filter(Boolean);
-  const unique = Array.from(new Set(arr)).filter(u => u.length <= 32);
-  return unique;
+  return Array.from(new Set(
+    raw.split(",").map(s => s.trim()).filter(Boolean)
+  )).filter(u => u.length <= 32);
 }
 
+// Event delegation for all group items (dynamically created)
+groupsList.addEventListener("click", (e) => {
+  const groupEl = e.target.closest(".group-entry");
+  if (!groupEl) return;
+
+  const groupName = groupEl.dataset.group;
+  if (!groupName) return;
+
+  openTab(`group:${groupName}`);
+});
+
+// Create a new group
 newGroupBtn.onclick = async () => {
   let name = prompt("Enter a group name (letters, numbers, -, _ ; max 30 chars):");
   if (!name) return;
@@ -916,15 +1082,33 @@ newGroupBtn.onclick = async () => {
 
   const extra = prompt("Add members (comma-separated usernames), optional:");
   const members = parseMembers(extra).filter(u => u !== loggedInUser);
+
   try {
     await setDoc(doc(db, "groups", name), {
       members: [loggedInUser],
       createdBy: loggedInUser,
       createdAt: Date.now()
     }, { merge: true });
+
     if (members.length) {
       await updateDoc(doc(db, "groups", name), { members: arrayUnion(...members) });
     }
+
+    // Add group to UI immediately
+    const groupItem = document.createElement("div");
+    groupItem.className = "group-entry";
+    groupItem.dataset.group = name;
+    groupItem.textContent = name;
+    groupItem.style.cssText = `
+      padding: 8px 12px; margin-bottom: 6px;
+      border-radius: 10px; background: #1b3a73;
+      cursor: pointer; transition: all 0.2s;
+    `;
+    groupItem.onmouseenter = () => groupItem.style.background = "#2a4d8c";
+    groupItem.onmouseleave = () => groupItem.style.background = "#1b3a73";
+
+    groupsList.appendChild(groupItem);
+
     openTab(`group:${name}`);
   } catch (e) {
     console.error(e);
@@ -1151,16 +1335,26 @@ async function sendMessage() {
 }
 
 
-document.getElementById("toggleSidebar").addEventListener("click", () => {
-  const sidebar = document.getElementById("sidebar");
-  const chat = document.getElementById("chatContainer");
+const toggleBtn = document.getElementById("toggleSidebar");
+const chat = document.getElementById("chatContainer");
 
-  sidebar.classList.toggle("hidden");
+// Make sure sidebar starts hidden
+sidebar.classList.add("hidden");
+chat.style.marginRight = "0";
 
-  if (sidebar.classList.contains("hidden")) {
-    chat.style.marginRight = "0";
-  } else {
+toggleBtn.addEventListener("click", () => {
+  const isHidden = sidebar.classList.contains("hidden");
+
+  if (isHidden) {
+    // Show sidebar
+    sidebar.classList.remove("hidden");
+    sidebar.classList.add("visible");
     chat.style.marginRight = sidebar.offsetWidth + "px";
+  } else {
+    // Hide sidebar
+    sidebar.classList.remove("visible");
+    sidebar.classList.add("hidden");
+    chat.style.marginRight = "0";
   }
 });
 
@@ -1424,32 +1618,31 @@ function renderMessage(docSnap, data) {
 }
 
 
-function updateUnreadBadge(key) {
-  const count = clamp(unreadCounts[key] || 0, 0, 999);
-  const formatCount = (n) => (n > 99 ? "99+" : n);
-  function createUnreadBadge(n) {
+function updateUnreadBadge(user) {
+  const row = document.querySelector(`.online-user[data-user="${CSS.escape(user)}"]`);
+  if (!row) return;
+
+  let count = unreadCounts[user] || 0;
+
+  // Also count messages in DM tabs even if not friends
+  if (user !== "all" && !friendsAccepted.has(user)) {
+    const messages = messagesByTab[user] || [];
+    count = messages.filter(m => m.from === user && m.to === loggedInUser).length;
+  }
+
+  let holder = row.querySelector(".unread-holder");
+  if (!holder) {
+    holder = document.createElement("span");
+    holder.className = "unread-holder";
+    row.appendChild(holder);
+  }
+
+  holder.innerHTML = "";
+  if (count > 0) {
     const badge = document.createElement("span");
     badge.className = "unread-badge";
-    badge.textContent = formatCount(n);
-    badge.setAttribute("aria-label", `${n} unread message${n === 1 ? "" : "s"}`);
-    return badge;
-  }
-
-  if (openTabs[key]) {
-    const tab = openTabs[key];
-    let badge = tab.querySelector(".unread-badge");
-    if (count > 0) { if (!badge) tab.appendChild(createUnreadBadge(count)); else badge.textContent = formatCount(count); }
-    else if (badge) badge.remove();
-  }
-
-  const row = document.querySelector(`.online-user[data-user="${CSS.escape(key)}"]`);
-  if (row) {
-    const holder = row.querySelector(".unread-holder");
-    if (holder) {
-      let badge = holder.querySelector(".unread-badge");
-      if (count > 0) { if (!badge) holder.appendChild(createUnreadBadge(count)); else badge.textContent = formatCount(count); }
-      else if (badge) badge.remove();
-    }
+    badge.textContent = count;
+    holder.appendChild(badge);
   }
 }
 
