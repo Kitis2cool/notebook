@@ -21,7 +21,7 @@ const db = getFirestore(app);
 
 /* ===== Admin & login ===== */
 const ADMIN_USER = "kitis";
-let isAdmin = false;
+let isAdmin = true;
 const loggedInUser = localStorage.getItem("loggedInUser");
 if (!loggedInUser) window.location.href = "login.html";
 (document.getElementById("username")).value = loggedInUser;
@@ -1012,10 +1012,10 @@ function mergeMessage(msg) {
   }
 }
 
-// --- Keep track of muted users ---
+// ================== Globals ==================
 const mutedUsers = new Set();
 
-// --- Render a chat message ---
+// ================== Message Renderer ==================
 function renderMessage(docSnap, data) {
   const now = Date.now();
   const ONE_HOUR = 60 * 60 * 1000;
@@ -1023,11 +1023,13 @@ function renderMessage(docSnap, data) {
   // Skip muted users
   if (mutedUsers.has(data.from)) return;
 
-  // Convert Firestore Timestamp to milliseconds if necessary
+  // Handle Firestore timestamp
   let msgTime = data.timestamp;
-  if (msgTime && typeof msgTime.toMillis === "function") msgTime = msgTime.toMillis();
+  if (msgTime && typeof msgTime.toMillis === "function") {
+    msgTime = msgTime.toMillis();
+  }
 
-  // --- Auto-delete old messages ---
+  // Auto-delete old messages
   if (msgTime && now - msgTime > ONE_HOUR) {
     (async () => {
       try {
@@ -1040,32 +1042,32 @@ function renderMessage(docSnap, data) {
         console.error("Failed to auto-delete old message:", err);
       }
     })();
+    return; // Don’t render after deletion
   }
 
-  // --- Create message element ---
+  // --- Create container ---
   const div = document.createElement("div");
   div.className = "note-item";
 
+  // Avatar
   const avatarImg = document.createElement("img");
   avatarImg.src = `https://i.pravatar.cc/30?u=${data.from}`;
   div.appendChild(avatarImg);
 
+  // Message text
   const content = document.createElement("span");
-
   if (isGroupKey(data.to)) {
-    const gName = groupNameFromKey(data.to);
-    content.textContent = `#${gName} • ${data.from}: ${data.text || (data.fileName || "")}`;
+    content.textContent = `#${groupNameFromKey(data.to)} • ${data.from}: ${data.text || data.fileName || ""}`;
   } else if (data.to !== "all" && data.to !== loggedInUser && data.from === loggedInUser) {
-    content.textContent = `${data.from} → ${data.to}: ${data.text || (data.fileName || "")}`;
+    content.textContent = `${data.from} → ${data.to}: ${data.text || data.fileName || ""}`;
   } else {
-    content.textContent = `${data.from}: ${data.text || (data.fileName || "")}`;
+    content.textContent = `${data.from}: ${data.text || data.fileName || ""}`;
   }
   div.appendChild(content);
 
   // --- Attachments ---
   if (data.fileURL) {
-    const sep = document.createTextNode(" ");
-    div.appendChild(sep);
+    div.appendChild(document.createTextNode(" "));
 
     const fileLink = document.createElement("a");
     fileLink.href = data.fileURL;
@@ -1080,11 +1082,13 @@ function renderMessage(docSnap, data) {
       const preview = document.createElement("img");
       preview.src = data.fileURL;
       preview.alt = data.fileName || "attachment";
-      preview.style.width = "120px";
-      preview.style.height = "auto";
-      preview.style.borderRadius = "8px";
-      preview.style.marginLeft = "8px";
-      preview.style.cursor = "pointer";
+      Object.assign(preview.style, {
+        width: "120px",
+        height: "auto",
+        borderRadius: "8px",
+        marginLeft: "8px",
+        cursor: "pointer",
+      });
       preview.onclick = () => window.open(data.fileURL, "_blank");
       div.appendChild(preview);
     }
@@ -1094,145 +1098,51 @@ function renderMessage(docSnap, data) {
   if (data.timestamp) {
     const timeSpan = document.createElement("span");
     timeSpan.className = "timestamp";
-    timeSpan.style.marginLeft = "8px";
-    timeSpan.style.fontSize = "11px";
-    timeSpan.style.color = "#aaa";
+    Object.assign(timeSpan.style, {
+      marginLeft: "8px",
+      fontSize: "11px",
+      color: "#aaa",
+    });
     timeSpan.textContent = timeAgo(data.timestamp);
     div.appendChild(timeSpan);
   }
 
-  // --- Styling ---
+  // --- Styling for roles ---
   if (data.from === ADMIN_USER) div.classList.add("admin-message");
   if (data.from === loggedInUser) div.classList.add("own-message");
   else if (data.to === loggedInUser && data.to !== "all") div.classList.add("private-message");
 
   // --- Delete button ---
-  (function () {
-    let canDelete = isAdmin || data.from === loggedInUser;
-    if (isGroupKey(data.to)) {
-      const groupKey = data.to;
-      const group = groupsMeta[groupKey];
-      if (group && group.createdBy === loggedInUser) canDelete = true;
-    }
+  let canDelete = isAdmin || data.from === loggedInUser;
+  if (isGroupKey(data.to)) {
+    const group = groupsMeta[data.to];
+    if (group && group.createdBy === loggedInUser) canDelete = true;
+  }
 
-    if (canDelete) {
-      const delBtn = document.createElement("button");
-      delBtn.textContent = "✖";
-      delBtn.className = "delete-btn";
-      delBtn.title = "Delete message";
-
-      delBtn.onclick = async (e) => {
-        e.stopPropagation();
-        try {
-          const targetCollection = isGroupKey(data.to)
-            ? collection(db, "groups", groupNameFromKey(data.to), "messages")
-            : collection(db, "messages");
-          await deleteDoc(doc(targetCollection, docSnap.id));
-        } catch (err) {
-          console.error(err);
-          alert("Failed to delete message.");
-        }
-      };
-
-      div.appendChild(delBtn);
-    }
-  })();
+  if (canDelete) {
+    const delBtn = document.createElement("button");
+    delBtn.textContent = "✖";
+    delBtn.className = "delete-btn";
+    delBtn.title = "Delete message";
+    delBtn.onclick = async (e) => {
+      e.stopPropagation();
+      try {
+        const targetCollection = isGroupKey(data.to)
+          ? collection(db, "groups", groupNameFromKey(data.to), "messages")
+          : collection(db, "messages");
+        await deleteDoc(doc(targetCollection, docSnap.id));
+      } catch (err) {
+        console.error(err);
+        alert("Failed to delete message.");
+      }
+    };
+    div.appendChild(delBtn);
+  }
 
   notesList.appendChild(div);
 }
 
 
-window.addEventListener("DOMContentLoaded", () => {
-  const adminPanel = document.getElementById("adminPanel");
-  const adminCloseBtn = document.getElementById("adminCloseBtn");
-
-  // Only run if admin and adminPanel exists
-  if (!isAdmin || !adminPanel) return;
-
-  // Create Admin Panel button
-  const adminBtn = document.createElement("button");
-  adminBtn.textContent = "Admin Panel";
-  Object.assign(adminBtn.style, {
-    position: "fixed",
-    bottom: "80px", // above chat input
-    right: "20px",
-    zIndex: "1000",
-    background: "#ff8800",
-    color: "#121212",
-    border: "none",
-    padding: "10px 15px",
-    borderRadius: "10px",
-    cursor: "pointer",
-  });
-  document.body.appendChild(adminBtn);
-
-  // Show/hide panel
-  adminBtn.onclick = () => adminPanel.style.display = "block";
-  adminCloseBtn.onclick = () => adminPanel.style.display = "none";
-
-  // Setup admin actions (send/mute/unmute/delete)
-  setupAdminActions();
-});
-
-function setupAdminActions() {
-  const adminSendBtn = document.getElementById("adminSendBtn");
-  const adminMuteBtn = document.getElementById("adminMuteBtn");
-  const adminUnmuteBtn = document.getElementById("adminUnmuteBtn");
-  const adminDeleteAllBtn = document.getElementById("adminDeleteAllBtn");
-
-  if (adminSendBtn) {
-    adminSendBtn.onclick = async () => {
-      const user = document.getElementById("adminSendUser").value.trim();
-      const msg = document.getElementById("adminSendText").value.trim();
-      if (!user || !msg) return alert("Enter both username and message");
-      try {
-        await addDoc(collection(db, "messages"), { from: user, text: msg, timestamp: Date.now(), to: "all" });
-        document.getElementById("adminSendText").value = "";
-        alert("Message sent!");
-      } catch (e) { console.error(e); alert("Failed to send message"); }
-    };
-  }
-
-  if (adminMuteBtn) {
-    adminMuteBtn.onclick = async () => {
-      const user = document.getElementById("adminMuteUser").value.trim();
-      if (!user) return alert("Enter a username to mute");
-      mutedUsers.add(user);
-      document.querySelectorAll(".note-item").forEach(msgDiv => {
-        const text = msgDiv.querySelector("span")?.textContent;
-        if (text?.startsWith(user + ":")) msgDiv.style.display = "none";
-      });
-      try { await setDoc(doc(db, "muted", user), { muted: true }); alert(`${user} has been muted`); }
-      catch (e) { console.error(e); alert("Failed to mute user"); }
-    };
-  }
-
-  if (adminUnmuteBtn) {
-    adminUnmuteBtn.onclick = async () => {
-      const user = document.getElementById("adminMuteUser").value.trim();
-      if (!user) return alert("Enter a username to unmute");
-      mutedUsers.delete(user);
-      document.querySelectorAll(".note-item").forEach(msgDiv => {
-        const text = msgDiv.querySelector("span")?.textContent;
-        if (text?.startsWith(user + ":")) msgDiv.style.display = "";
-      });
-      try { await deleteDoc(doc(db, "muted", user)); alert(`${user} has been unmuted`); }
-      catch (e) { console.error(e); alert("Failed to unmute user"); }
-    };
-  }
-
-  if (adminDeleteAllBtn) {
-    adminDeleteAllBtn.onclick = async () => {
-      if (!confirm("Are you sure? This will delete ALL messages!")) return;
-      try {
-        const snapshot = await getDocs(collection(db, "messages"));
-        const deletes = snapshot.docs.map(docSnap => deleteDoc(doc(db, "messages", docSnap.id)));
-        await Promise.all(deletes);
-        alert("All messages deleted!");
-      } catch (e) { console.error(e); alert("Failed to delete all messages"); }
-    };
-  }
-}
 
 
 function updateUnreadBadge(user) {
