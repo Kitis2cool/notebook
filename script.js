@@ -21,7 +21,7 @@ const db = getFirestore(app);
 
 /* ===== Admin & login ===== */
 const ADMIN_USER = "kitis";
-let isAdmin = true;
+let isAdmin = false;
 const loggedInUser = localStorage.getItem("loggedInUser");
 if (!loggedInUser) window.location.href = "login.html";
 (document.getElementById("username")).value = loggedInUser;
@@ -1306,3 +1306,4 @@ function watchMessages(chatId) {
     }
   );
 }
+
