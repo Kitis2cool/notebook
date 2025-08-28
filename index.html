@@ -1543,51 +1543,52 @@ const typingIndicator = document.getElementById("typingIndicator");
 
 let typingTimeout;
 const TYPING_DELAY = 3000; // 3 seconds inactivity
+let lastTypingWrite = 0;
+const TYPING_WRITE_INTERVAL = 2000; // 2 seconds minimum between writes
 
-// --- Update your typing status ---
+// --- Update your typing status with throttling ---
 messageInput.addEventListener("input", () => {
-  setDoc(doc(db, "presence", loggedInUser), { typing: true }, { merge: true });
+  const now = Date.now();
+
+  if (now - lastTypingWrite > TYPING_WRITE_INTERVAL) {
+    setDoc(doc(db, "presence", loggedInUser), { typing: true, lastUpdate: now }, { merge: true });
+    lastTypingWrite = now;
+  }
 
   clearTimeout(typingTimeout);
   typingTimeout = setTimeout(() => {
-    setDoc(doc(db, "presence", loggedInUser), { typing: false }, { merge: true });
+    setDoc(doc(db, "presence", loggedInUser), { typing: false, lastUpdate: Date.now() }, { merge: true });
+    lastTypingWrite = Date.now();
   }, TYPING_DELAY);
 });
 
-// --- Watch typing status for multiple friends ---
-function watchTypingStatus(friends) {
-  friends.forEach(friendUser => {
-    onSnapshot(doc(db, "presence", friendUser), (snap) => {
-      const data = snap.data();
-      updateTypingIndicator(friendUser, data?.typing);
+// --- Watch typing status for all users ---
+function watchAllTypingStatus() {
+  onSnapshot(collection(db, "presence"), (snapshot) => {
+    const now = Date.now();
+    const activeTyping = [];
+
+    snapshot.docs.forEach(docSnap => {
+      const data = docSnap.data();
+      const user = docSnap.id;
+
+      // Consider typing only if updated in the last 5 seconds
+      if (data?.typing && data.lastUpdate && now - data.lastUpdate < 5000 && user !== loggedInUser) {
+        activeTyping.push(user);
+      }
     });
+
+    if (activeTyping.length) {
+      typingIndicator.textContent = activeTyping.join(", ") + " is typing...";
+    } else {
+      typingIndicator.textContent = "";
+    }
   });
 }
 
-// --- Keep track of who is typing ---
-const currentlyTyping = new Set();
+// Start watching
+watchAllTypingStatus();
 
-function updateTypingIndicator(user, isTyping) {
-  if (isTyping) {
-    currentlyTyping.add(user);
-  } else {
-    currentlyTyping.delete(user);
-  }
-
-  if (currentlyTyping.size) {
-    typingIndicator.textContent = Array.from(currentlyTyping).join(", ") + (currentlyTyping.size === 1 ? " is typing..." : " are typing...");
-    notesList.scrollTop = notesList.scrollHeight; // auto-scroll to show indicator
-  } else {
-    typingIndicator.textContent = "";
-  }
-}
-
-// --- Clear typing indicator when user sends a message ---
-messageInput.addEventListener("keydown", (e) => {
-  if (e.key === "Enter" && !e.shiftKey) {
-    setDoc(doc(db, "presence", loggedInUser), { typing: false }, { merge: true });
-  }
-});
 
 // --- Listen for new messages in a chat ---
 function watchMessages(chatId) {
@@ -1601,8 +1602,6 @@ function watchMessages(chatId) {
     }
   );
 }
-
 </script>
-
 </body>
 </html>
