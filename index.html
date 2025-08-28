@@ -1541,25 +1541,36 @@ function timeAgo(ts) {
 const messageInput = document.getElementById("noteInput");
 const typingIndicator = document.getElementById("typingIndicator");
 
-let typingTimeout;
 let isTyping = false;
-const TYPING_DELAY = 3000; // 3 seconds inactivity
+let lastTyped = 0;
+const TYPING_DELAY = 3000; // 3 seconds inactivity before local timer
+const CHECK_INTERVAL = 7000; // 7 seconds to verify typing
 
-// --- Update your typing status only on change ---
+// --- Update typing state locally ---
 messageInput.addEventListener("input", () => {
+  lastTyped = Date.now();
+
   if (!isTyping) {
     isTyping = true;
-    setDoc(doc(db, "presence", loggedInUser), { typing: true, lastUpdate: Date.now() }, { merge: true });
+    setDoc(doc(db, "presence", loggedInUser), {
+      typing: true,
+      lastUpdate: lastTyped
+    }, { merge: true });
   }
-
-  clearTimeout(typingTimeout);
-  typingTimeout = setTimeout(() => {
-    isTyping = false;
-    setDoc(doc(db, "presence", loggedInUser), { typing: false, lastUpdate: Date.now() }, { merge: true });
-  }, TYPING_DELAY);
 });
 
-// --- Watch typing status for all users ---
+// --- Periodically check if user stopped typing ---
+setInterval(() => {
+  if (isTyping && Date.now() - lastTyped > TYPING_DELAY) {
+    isTyping = false;
+    setDoc(doc(db, "presence", loggedInUser), {
+      typing: false,
+      lastUpdate: Date.now()
+    }, { merge: true });
+  }
+}, CHECK_INTERVAL);
+
+// --- Watch all users' typing status ---
 function watchAllTypingStatus() {
   onSnapshot(collection(db, "presence"), (snapshot) => {
     const now = Date.now();
@@ -1569,8 +1580,8 @@ function watchAllTypingStatus() {
       const data = docSnap.data();
       const user = docSnap.id;
 
-      // Only show typing if updated in last 5s and not yourself
-      if (data?.typing && data.lastUpdate && now - data.lastUpdate < 5000 && user !== loggedInUser) {
+      // Only show typing if updated in last 7s and not yourself
+      if (data?.typing && data.lastUpdate && now - data.lastUpdate < CHECK_INTERVAL && user !== loggedInUser) {
         activeTyping.push(user);
       }
     });
@@ -1581,7 +1592,7 @@ function watchAllTypingStatus() {
   });
 }
 
-// Start watching
+// Start watching all users
 watchAllTypingStatus();
 
 
