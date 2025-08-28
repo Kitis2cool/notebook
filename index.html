@@ -1,87 +1,203 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<title>Kitchatty</title>
-<link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <title>Kitchatty</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+
+    /* === Admin Floating Button === */
+    #adminToggleBtn {
+      position: fixed;
+      bottom: 80px;
+      right: 20px;
+      background: #ff8800;
+      color: #121212;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: bold;
+      z-index: 2100;
+    }
+
+    /* === Admin Panel === */
+    #adminPanel {
+      position: fixed;
+      top: 0;
+      right: -320px; /* hidden off screen */
+      width: 300px;
+      height: 100%;
+      background: #1e1e1e;
+      color: #fff;
+      padding: 15px;
+      box-shadow: -3px 0 10px rgba(0,0,0,0.6);
+      transition: right 0.3s ease;
+      border-radius: 8px 0 0 8px;
+      z-index: 2000;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #adminPanel.open {
+      right: 0;
+    }
+
+    #adminPanel header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    #adminPanel input,
+    #adminPanel textarea {
+      width: 100%;
+      margin: 4px 0;
+      padding: 6px;
+      border-radius: 4px;
+      border: none;
+      font-size: 14px;
+    }
+
+    #adminPanel button {
+      margin-top: 6px;
+      padding: 6px 10px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    #adminCloseBtn {
+      background: none;
+      color: #fff;
+      border: none;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    #adminDeleteAllBtn {
+      background: #c00;
+      color: #fff;
+    }
+  </style>
 </head>
 <body>
 
-<!-- Sidebar Toggle Button -->
-<button id="toggleSidebar">☰</button>
+  <!-- Sidebar Toggle Button -->
+  <button id="toggleSidebar">☰</button>
 
-<!-- Sidebar -->
-<div id="sidebar" class="hidden">
-  <h3>Friends</h3>
-  <div id="friendControls">
-    <input id="friendInput" type="text" placeholder="Add friend by username" maxlength="32">
-    <button id="addFriendBtn">Add</button>
-    <button id="toggleDiscoverBtn" title="Show/Hide all online users">Discover</button>
+  <!-- Sidebar -->
+  <div id="sidebar" class="hidden">
+    <h3>Friends</h3>
+    <div id="friendControls">
+      <input id="friendInput" type="text" placeholder="Add friend by username" maxlength="32">
+      <button id="addFriendBtn">Add</button>
+      <button id="toggleDiscoverBtn" title="Show/Hide all online users">Discover</button>
+    </div>
+    <div id="friendsList"></div>
+
+    <h3>Friend Requests</h3>
+    <div id="requestsList"></div>
+
+    <h3 style="display:flex;justify-content:space-between;align-items:center;">
+      Discover (All Online)
+      <span style="font-size:12px;color:#ccc;">— filtered to non-friends</span>
+    </h3>
+    <div id="discoverList"></div>
+
+    <button id="chatAllBtn">Chat All</button>
+    <button id="editProfileBtn" hidden>Edit Profile</button>
+    <input type="file" id="avatarInput" accept="image/*" hidden>
+    <img id="myAvatarImg" src="https://i.pravatar.cc/50?u=me" alt="My Avatar" style="width:50px;height:50px;border-radius:50%;margin-top:8px;" hidden>
+
+    <input type="color" id="bgSelector" onchange="changeBackground()" style="margin:12px 0;">
+    <button id="showNewsBtn" class="action-btn" type="button">Show News</button>
   </div>
-  <div id="friendsList"></div>
 
-  <h3>Friend Requests</h3>
-  <div id="requestsList"></div>
+  <!-- Chat Area -->
+  <div id="chatContainer">
+    <div id="tabs"></div>
+    <div id="notesList"></div>
+    <div id="typingIndicator" style="font-size:12px;color:#aaa;margin:4px;"></div>
 
-  <h3 style="display:flex;justify-content:space-between;align-items:center;">
-    Discover (All Online)
-    <span style="font-size:12px;color:#ccc;">— filtered to non-friends</span>
-  </h3>
-  <div id="discoverList"></div>
-
-  <button id="chatAllBtn">Chat All</button>
-  <button id="editProfileBtn" hidden>Edit Profile</button>
-  <input type="file" id="avatarInput" accept="image/*" hidden>
-  <img id="myAvatarImg" src="https://i.pravatar.cc/50?u=me" alt="My Avatar" style="width:50px;height:50px;border-radius:50%;margin-top:8px;" hidden>
-
-  <input type="color" id="bgSelector" onchange="changeBackground()" style="margin:12px 0;">
-  <button id="showNewsBtn" class="action-btn" type="button">Show News</button>
-</div>
-
-<!-- Chat Area -->
-<div id="chatContainer">
-  <div id="tabs"></div>
-  <div id="notesList"></div>
-  <div id="typingIndicator" style="font-size:12px;color:#aaa;margin:4px;"></div>
-
-  <div id="chatBar">
-    <input id="username" readonly>
-    <input type="text" id="noteInput" placeholder="Write a message or paste a link...">
-    <button id="sendBtn">Send</button>
-    <button id="attachBtn" title="Paste a URL">📎</button>
-    <button id="logoutBtn">Logout</button>
-    
+    <div id="chatBar">
+      <input id="username" readonly>
+      <input type="text" id="noteInput" placeholder="Write a message or paste a link...">
+      <button id="sendBtn">Send</button>
+      <button id="attachBtn" title="Paste a URL">📎</button>
+      <button id="logoutBtn">Logout</button>
+    </div>
   </div>
-  
-</div>
 
-
-<!-- News Modal -->
-<div id="newsOverlay" role="dialog" aria-modal="true" aria-labelledby="newsTitle">
-  <div id="newsModal">
-    <header>
-      <h2 id="newsTitle">Kitchatty — Updates</h2>
-      <button id="closeNewsBtn" type="button">Close</button>
-    </header>
-    <div style="font-size:14px;line-height:1.5;">
-      <p><strong>What’s new:</strong></p>
-      <ul>
-        <li>✨ Brand new Friends system (add/accept/remove + requests)</li>
-        <li>🗂️ Sidebar is decluttered revamped</li>
-        <li>🛡️ Profanity filter & 350 character limit</li>
-        <li>🖼️ Free attachments via pasted links (Imgur/Postimages etc.)</li>
-        <li>📣 This news pops up the first time you open the page</li>
-        <li>🥵 New login page!</li>
-      </ul>
-      <p style="opacity:.8;">Tip: Use <em>Discover</em> to see everyone currently online and add them as friends.</p>
-      <div style="margin-top:10px;display:flex;justify-content:flex-end;gap:8px;">
-        <button id="dontShowNewsBtn" type="button">Don’t show again</button>
-        <button id="ackNewsBtn" class="action-btn" type="button">Got it</button>
+  <!-- News Modal -->
+  <div id="newsOverlay" role="dialog" aria-modal="true" aria-labelledby="newsTitle">
+    <div id="newsModal">
+      <header>
+        <h2 id="newsTitle">Kitchatty — Updates</h2>
+        <button id="closeNewsBtn" type="button">Close</button>
+      </header>
+      <div style="font-size:14px;line-height:1.5;">
+        <p><strong>What’s new:</strong></p>
+        <ul>
+          <li>✨ Brand new Friends system (add/accept/remove + requests)</li>
+          <li>🗂️ Sidebar is decluttered revamped</li>
+          <li>🛡️ Profanity filter & 350 character limit</li>
+          <li>🖼️ Free attachments via pasted links (Imgur/Postimages etc.)</li>
+          <li>📣 This news pops up the first time you open the page</li>
+          <li>🥵 New login page!</li>
+        </ul>
+        <p style="opacity:.8;">Tip: Use <em>Discover</em> to see everyone currently online and add them as friends.</p>
+        <div style="margin-top:10px;display:flex;justify-content:flex-end;gap:8px;">
+          <button id="dontShowNewsBtn" type="button">Don’t show again</button>
+          <button id="ackNewsBtn" class="action-btn" type="button">Got it</button>
+        </div>
       </div>
     </div>
   </div>
-</div>
 
-<script type="module" src="script.js"></script>
+  <!-- Admin Toggle Button -->
+  <button id="adminToggleBtn">☰ Admin</button>
+
+  <!-- Admin Panel -->
+  <div id="adminPanel">
+    <header>
+      <h3 style="margin:0;">Admin Panel</h3>
+      <button id="adminCloseBtn">✖</button>
+    </header>
+    
+    <div style="margin-top:10px;">
+      <input id="adminSendUser" type="text" placeholder="Send as user">
+      <textarea id="adminSendText" placeholder="Message"></textarea>
+      <button id="adminSendBtn">Send</button>
+    </div>
+
+    <div style="margin-top:10px;">
+      <input id="adminMuteUser" type="text" placeholder="Username">
+      <button id="adminMuteBtn">Mute</button>
+      <button id="adminUnmuteBtn">Unmute</button>
+    </div>
+
+    <div style="margin-top:10px;">
+      <button id="adminDeleteAllBtn">Delete All Messages</button>
+    </div>
+  </div>
+
+  <!-- Your main JS -->
+  <script type="module" src="script.js"></script>
+  <script>
+    // Admin toggle logic
+    const adminToggleBtn = document.getElementById("adminToggleBtn");
+    const adminPanel = document.getElementById("adminPanel");
+    const adminCloseBtn = document.getElementById("adminCloseBtn");
+
+    adminToggleBtn.addEventListener("click", () => {
+      adminPanel.classList.toggle("open");
+    });
+
+    adminCloseBtn.addEventListener("click", () => {
+      adminPanel.classList.remove("open");
+    });
+    
+  </script>
 </body>
 </html>
