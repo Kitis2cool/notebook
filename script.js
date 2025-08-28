@@ -800,17 +800,21 @@ function highlightActiveTab() {
   Object.values(openTabs).forEach((tab) => tab.classList.remove("active"));
   if (openTabs[activeTab]) openTabs[activeTab].classList.add("active");
 }
-// keep this somewhere globally (top of your script)
+// Place this near the top of your main JS file
 let replyTarget = null;
-function setReplyTarget(message) {
+
+window.setReplyTarget = function (message) {
   replyTarget = message;
   document.getElementById("replyText").textContent = `Replying to: ${message.text}`;
   document.getElementById("replyPreview").style.display = "block";
-}
-function clearReply() {
+};
+
+window.clearReply = function () {
   replyTarget = null;
+  document.getElementById("replyText").textContent = "";
   document.getElementById("replyPreview").style.display = "none";
-}
+};
+
 
 // --- Unified sendMessage with typing + timestamp + reply support ---
 async function sendMessage() {
@@ -1365,3 +1369,4 @@ function watchMessages(chatId) {
     }
   );
 }
+
