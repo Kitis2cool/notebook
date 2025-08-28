@@ -20,17 +20,51 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 /* ===== Admin & login ===== */
-const ADMIN_USERS = ["kitis", "kellen"];  // Add all admin usernames here
+const LOCAL_ADMIN_USERS = ["kitis", "kellen"];  // backup hardcoded list
 let isAdmin = false;
+
 const loggedInUser = localStorage.getItem("loggedInUser");
 if (!loggedInUser) window.location.href = "login.html";
-(document.getElementById("username")).value = loggedInUser;
 
-// Check if the logged-in user is in the admin list
-if (ADMIN_USERS.includes(loggedInUser)) isAdmin = true;
+// Fill username input
+document.getElementById("username").value = loggedInUser;
 
-// Ensure my user doc exists so friends can reference me
-await setDoc(doc(db, "users", loggedInUser), { createdAt: Date.now() }, { merge: true });
+// Ensure user doc exists
+await setDoc(
+  doc(db, "users", loggedInUser),
+  { createdAt: Date.now() },
+  { merge: true }
+);
+
+// === Check admin status ===
+async function checkAdmin(username) {
+  try {
+    // Try Firestore "admins" collection first
+    const adminRef = doc(db, "admins", username);
+    const snap = await getDoc(adminRef);
+
+    if (snap.exists()) {
+      return true; // Found in Firestore
+    }
+
+    // Fallback: check local array
+    return LOCAL_ADMIN_USERS.includes(username);
+  } catch (err) {
+    console.error("Error checking admin:", err);
+    // If Firestore fails, fallback to local array
+    return LOCAL_ADMIN_USERS.includes(username);
+  }
+}
+
+// Run admin check
+isAdmin = await checkAdmin(loggedInUser);
+
+// === Example usage ===
+if (isAdmin) {
+  console.log(`${loggedInUser} is an admin ✅`);
+} else {
+  console.log(`${loggedInUser} is a regular user ❌`);
+}
 
 /* ===== Helpers ===== */
 const looksLikeUrl = (text = "") => /^https?:\/\/\S+$/i.test(text.trim());
@@ -1309,5 +1343,6 @@ function watchMessages(chatId) {
     }
   );
 }
+
 
 
