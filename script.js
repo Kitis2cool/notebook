@@ -20,16 +20,16 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 /* ===== Admin & login ===== */
-const ADMIN_USERS = ["kitis", "kellen", "alex"];  // ✅ multiple admins
+const ADMIN_USERS = ["kitis", "kellen"];   // ✅ multiple admins
 let isAdmin = false;
 
 const loggedInUser = localStorage.getItem("loggedInUser");
 if (!loggedInUser) window.location.href = "login.html";
 
-// Put logged-in name into the UI
+// Fill username input
 document.getElementById("username").value = loggedInUser;
 
-// ✅ Calculate isAdmin based on the array
+// ✅ Works exactly like before, but now with multiple admins
 if (ADMIN_USERS.includes(loggedInUser)) {
   isAdmin = true;
 }
@@ -1116,7 +1116,10 @@ function renderMessage(docSnap, data) {
   }
 
   // --- Styling for roles ---
-  if (data.from === ADMIN_USER) div.classList.add("admin-message");
+if (ADMIN_USERS.includes(data.from)) {
+  div.classList.add("admin-message");
+}
+
   if (data.from === loggedInUser) div.classList.add("own-message");
   else if (data.to === loggedInUser && data.to !== "all") div.classList.add("private-message");
 
@@ -1314,4 +1317,5 @@ function watchMessages(chatId) {
     }
   );
 }
+
 
