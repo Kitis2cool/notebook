@@ -1542,23 +1542,20 @@ const messageInput = document.getElementById("noteInput");
 const typingIndicator = document.getElementById("typingIndicator");
 
 let typingTimeout;
+let isTyping = false;
 const TYPING_DELAY = 3000; // 3 seconds inactivity
-let lastTypingWrite = 0;
-const TYPING_WRITE_INTERVAL = 2000; // 2 seconds minimum between writes
 
-// --- Update your typing status with throttling ---
+// --- Update your typing status only on change ---
 messageInput.addEventListener("input", () => {
-  const now = Date.now();
-
-  if (now - lastTypingWrite > TYPING_WRITE_INTERVAL) {
-    setDoc(doc(db, "presence", loggedInUser), { typing: true, lastUpdate: now }, { merge: true });
-    lastTypingWrite = now;
+  if (!isTyping) {
+    isTyping = true;
+    setDoc(doc(db, "presence", loggedInUser), { typing: true, lastUpdate: Date.now() }, { merge: true });
   }
 
   clearTimeout(typingTimeout);
   typingTimeout = setTimeout(() => {
+    isTyping = false;
     setDoc(doc(db, "presence", loggedInUser), { typing: false, lastUpdate: Date.now() }, { merge: true });
-    lastTypingWrite = Date.now();
   }, TYPING_DELAY);
 });
 
@@ -1572,17 +1569,15 @@ function watchAllTypingStatus() {
       const data = docSnap.data();
       const user = docSnap.id;
 
-      // Consider typing only if updated in the last 5 seconds
+      // Only show typing if updated in last 5s and not yourself
       if (data?.typing && data.lastUpdate && now - data.lastUpdate < 5000 && user !== loggedInUser) {
         activeTyping.push(user);
       }
     });
 
-    if (activeTyping.length) {
-      typingIndicator.textContent = activeTyping.join(", ") + " is typing...";
-    } else {
-      typingIndicator.textContent = "";
-    }
+    typingIndicator.textContent = activeTyping.length
+      ? activeTyping.join(", ") + " is typing..."
+      : "";
   });
 }
 
@@ -1602,6 +1597,8 @@ function watchMessages(chatId) {
     }
   );
 }
+
 </script>
+
 </body>
 </html>
