@@ -581,3 +581,84 @@ body {
   cursor: pointer;
   margin-right: 8px;
 }
+
+.note-item {
+  position: relative;
+  padding-right: 25px; /* space for delete button */
+}
+
+.delete-btn {
+  position: absolute;
+  right: 5px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: #ff5555;
+  font-size: 14px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.note-item:hover .delete-btn {
+  opacity: 1;
+}
+/* Overlay */
+.admin-overlay {
+  position: fixed;
+  top:0; left:0;
+  width:100%; height:100%;
+  background: rgba(0,0,0,0.6);
+  z-index: 998;
+}
+
+/* Popup */
+.admin-popup {
+  position: fixed;
+  top:50%; left:50%;
+  transform: translate(-50%, -50%);
+  background:#1a1a1a;
+  padding:30px;
+  border-radius:16px;
+  width:320px;
+  max-width:90vw;
+  box-shadow:0 0 20px rgba(255,140,0,0.5);
+  color:white;
+  z-index: 999;
+}
+
+.admin-popup h2 {
+  color: #ffa733;
+  margin-bottom: 20px;
+}
+
+.admin-control {
+  margin-bottom: 15px;
+}
+
+.admin-control input {
+  margin:5px 0;
+  width:100%;
+  padding:8px;
+  border-radius:8px;
+  border:none;
+  outline:none;
+}
+
+.admin-control button {
+  margin-top:5px;
+  width:100%;
+  padding:8px;
+  border-radius:8px;
+  border:none;
+  background:#ffa733;
+  color:#121212;
+  cursor:pointer;
+  font-weight:bold;
+  transition:0.2s;
+}
+
+.admin-control button:hover {
+  background:#ffbb55;
+}
