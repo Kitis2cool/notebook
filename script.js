@@ -20,12 +20,20 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 /* ===== Admin & login ===== */
-const ADMIN_USER = "kitis";
+const ADMIN_USERS = ["kitis", "kellen", "alex"];  // ✅ multiple admins
 let isAdmin = false;
+
 const loggedInUser = localStorage.getItem("loggedInUser");
 if (!loggedInUser) window.location.href = "login.html";
-(document.getElementById("username")).value = loggedInUser;
-if (loggedInUser === ADMIN_USER) isAdmin = true;
+
+// Put logged-in name into the UI
+document.getElementById("username").value = loggedInUser;
+
+// ✅ Calculate isAdmin based on the array
+if (ADMIN_USERS.includes(loggedInUser)) {
+  isAdmin = true;
+}
+
 // Ensure my user doc exists so friends can reference me
 await setDoc(doc(db, "users", loggedInUser), { createdAt: Date.now() }, { merge: true });
 
@@ -1306,3 +1314,4 @@ function watchMessages(chatId) {
     }
   );
 }
+
