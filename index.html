@@ -21,16 +21,7 @@ body {
   transition: margin-right 0.3s ease;
 }
 
-#sidebar {
-  width: 320px; /* make wider if needed */
-  background: #0d1b3d;
-  position: fixed;
-  top: 0;
-  right: 0;   /* right side instead of left */
-  bottom: 0;
-  transition: transform 0.3s ease;
-  z-index: 2;
-}
+
 
 #sidebar.hidden ~ #chatContainer {
   margin-right: 0; /* expand when sidebar hidden */
@@ -68,7 +59,7 @@ body {
   top: 0;
   right: 0;
   bottom: 0;
-  width: 400px;
+  width: 25%;
   background: linear-gradient(145deg, rgba(15,40,98,0.95), rgba(30,60,120,0.95));
   border-radius: 6px 0 0 6px; /* only left side slightly rounded */
   backdrop-filter: blur(8px);
@@ -448,14 +439,15 @@ body {
 <div id="chatContainer">
   <div id="tabs"></div>
   <div id="notesList"></div>
+    <!-- Place this inside your chat container, e.g., above or below notesList -->
+
+    <div id="typingIndicator" style="font-size:12px; color:#aaa; margin:4px;"></div>
   <div id="chatBar">
     <input id="username" readonly />
     <input type="text" id="noteInput" placeholder="Write a message or paste a link..." />
     <button id="sendBtn">Send</button>
     <button id="attachBtn" title="Paste a URL">📎</button>
     <button id="logoutBtn">Logout</button>
-    <div id="typingIndicator" style="font-size:12px; color:#aaa; margin:4px;"></div>
-
 
   </div>
 </div>
@@ -1306,8 +1298,32 @@ function mergeMessage(msg) {
 }
 
 
-
 function renderMessage(docSnap, data) {
+  const now = Date.now();
+  const ONE_HOUR = 60 * 60 * 1000;
+
+  // Convert Firestore Timestamp to milliseconds if necessary
+  let msgTime = data.timestamp;
+  if (msgTime && typeof msgTime.toMillis === "function") msgTime = msgTime.toMillis();
+
+  // --- Auto-delete old messages in background ---
+  if (msgTime && now - msgTime > ONE_HOUR) {
+    (async () => {
+      try {
+        const targetCollection = isGroupKey(data.to)
+          ? collection(db, "groups", groupNameFromKey(data.to), "messages")
+          : collection(db, "messages");
+
+        await deleteDoc(doc(targetCollection, docSnap.id));
+        console.log("Auto-deleted old message:", docSnap.id);
+      } catch (err) {
+        console.error("Failed to auto-delete old message:", err);
+      }
+    })();
+    // DO NOT return — we still render the message
+  }
+
+  // --- Render message normally ---
   const div = document.createElement("div");
   div.className = "note-item";
 
@@ -1327,7 +1343,7 @@ function renderMessage(docSnap, data) {
   }
   div.appendChild(content);
 
-  // --- File attachments (your existing code) ---
+  // --- File attachments ---
   if (data.fileURL) {
     const sep = document.createTextNode(" ");
     div.appendChild(sep);
@@ -1355,30 +1371,54 @@ function renderMessage(docSnap, data) {
     }
   }
 
-  // --- Timestamp (new) ---
+  // --- Timestamp ---
   if (data.timestamp) {
     const timeSpan = document.createElement("span");
     timeSpan.className = "timestamp";
     timeSpan.style.marginLeft = "8px";
     timeSpan.style.fontSize = "11px";
     timeSpan.style.color = "#aaa";
-    timeSpan.textContent = timeAgo(data.timestamp); // uses your timeAgo() helper
+    timeSpan.textContent = timeAgo(data.timestamp);
     div.appendChild(timeSpan);
   }
 
-  // --- Styling for special cases ---
-if (data.from === ADMIN_USER) div.classList.add("admin-message");
-if (data.from === loggedInUser) div.classList.add("own-message");
-else if (data.to === loggedInUser && data.to !== "all") div.classList.add("private-message");
+  // --- Styling ---
+  if (data.from === ADMIN_USER) div.classList.add("admin-message");
+  if (data.from === loggedInUser) div.classList.add("own-message");
+  else if (data.to === loggedInUser && data.to !== "all") div.classList.add("private-message");
 
-// --- Delete button ---
-if (isAdmin || data.from === loggedInUser) {
-    const delBtn = document.createElement("button");
-    delBtn.textContent = "Delete";
-    delBtn.onclick = () => deleteDoc(doc(db, "messages", docSnap.id));
-    div.appendChild(delBtn);
-}
+  // --- Delete button ---
+  (function() {
+    let canDelete = isAdmin || data.from === loggedInUser;
 
+    if (isGroupKey(data.to)) {
+      const groupKey = data.to;
+      const group = groupsMeta[groupKey];
+      if (group && group.createdBy === loggedInUser) canDelete = true;
+    }
+
+    if (canDelete) {
+      const delBtn = document.createElement("button");
+      delBtn.textContent = "Delete";
+      delBtn.title = "Delete message";
+
+      delBtn.onclick = async (e) => {
+        e.stopPropagation();
+        try {
+          const targetCollection = isGroupKey(data.to)
+            ? collection(db, "groups", groupNameFromKey(data.to), "messages")
+            : collection(db, "messages");
+
+          await deleteDoc(doc(targetCollection, docSnap.id));
+        } catch (err) {
+          console.error(err);
+          alert("Failed to delete message.");
+        }
+      };
+
+      div.appendChild(delBtn);
+    }
+  })();
 
   notesList.appendChild(div);
 }
@@ -1486,8 +1526,6 @@ window.addEventListener("keydown", (e) => { if (e.key === "Escape") hideNews(); 
 console.assert(typeof window.changeBackground === "function", "changeBackground not attached to window");
 console.assert(typeof addDoc === "function", "Firestore import missing");
 
-/* === Typing Indicator + Messages with Timestamps === */
-
 // Utility: how long ago
 function timeAgo(ts) {
   const seconds = Math.floor((Date.now() - ts) / 1000);
@@ -1500,33 +1538,56 @@ function timeAgo(ts) {
   return `${days} day${days > 1 ? "s" : ""} ago`;
 }
 
-const messageInput = document.getElementById("noteInput");  // use the same input as sending
+const messageInput = document.getElementById("noteInput");
 const typingIndicator = document.getElementById("typingIndicator");
 
-
 let typingTimeout;
+const TYPING_DELAY = 3000; // 3 seconds inactivity
 
-// --- Typing state updates ---
+// --- Update your typing status ---
 messageInput.addEventListener("input", () => {
   setDoc(doc(db, "presence", loggedInUser), { typing: true }, { merge: true });
 
   clearTimeout(typingTimeout);
   typingTimeout = setTimeout(() => {
     setDoc(doc(db, "presence", loggedInUser), { typing: false }, { merge: true });
-  }, 3000);
+  }, TYPING_DELAY);
 });
 
-// Watch a friend’s typing status
-function watchFriendTyping(friendUser) {
-  onSnapshot(doc(db, "presence", friendUser), (snap) => {
-    const data = snap.data();
-    if (data?.typing) {
-      typingIndicator.textContent = `${friendUser} is typing...`;
-    } else {
-      typingIndicator.textContent = "";
-    }
+// --- Watch typing status for multiple friends ---
+function watchTypingStatus(friends) {
+  friends.forEach(friendUser => {
+    onSnapshot(doc(db, "presence", friendUser), (snap) => {
+      const data = snap.data();
+      updateTypingIndicator(friendUser, data?.typing);
+    });
   });
 }
+
+// --- Keep track of who is typing ---
+const currentlyTyping = new Set();
+
+function updateTypingIndicator(user, isTyping) {
+  if (isTyping) {
+    currentlyTyping.add(user);
+  } else {
+    currentlyTyping.delete(user);
+  }
+
+  if (currentlyTyping.size) {
+    typingIndicator.textContent = Array.from(currentlyTyping).join(", ") + (currentlyTyping.size === 1 ? " is typing..." : " are typing...");
+    notesList.scrollTop = notesList.scrollHeight; // auto-scroll to show indicator
+  } else {
+    typingIndicator.textContent = "";
+  }
+}
+
+// --- Clear typing indicator when user sends a message ---
+messageInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) {
+    setDoc(doc(db, "presence", loggedInUser), { typing: false }, { merge: true });
+  }
+});
 
 // --- Listen for new messages in a chat ---
 function watchMessages(chatId) {
