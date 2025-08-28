@@ -800,7 +800,19 @@ function highlightActiveTab() {
   Object.values(openTabs).forEach((tab) => tab.classList.remove("active"));
   if (openTabs[activeTab]) openTabs[activeTab].classList.add("active");
 }
-// --- Unified sendMessage with typing + timestamp support ---
+// keep this somewhere globally (top of your script)
+let replyTarget = null;
+function setReplyTarget(message) {
+  replyTarget = message;
+  document.getElementById("replyText").textContent = `Replying to: ${message.text}`;
+  document.getElementById("replyPreview").style.display = "block";
+}
+function clearReply() {
+  replyTarget = null;
+  document.getElementById("replyPreview").style.display = "none";
+}
+
+// --- Unified sendMessage with typing + timestamp + reply support ---
 async function sendMessage() {
   let text = document.getElementById("noteInput").value.trim();
   if (!text) return;
@@ -827,42 +839,43 @@ async function sendMessage() {
     ? collection(db, "groups", groupId, "messages")
     : collection(db, "messages");
 
-  // Handle URLs as attachments
-  if (looksLikeUrl(text)) {
-    await addDoc(msgCol, {
-      text: "",
-      from: loggedInUser,
-      to: activeTab,
-      timestamp: Date.now(),
-      fileURL: text,
-      fileName: text.split("/").pop().split("?")[0],
-    });
-    document.getElementById("noteInput").value = "";
-    // reset typing
-    await setDoc(doc(db, "presence", loggedInUser), { typing: false }, { merge: true });
-    return;
-  }
-
-  const maxLength = 350;
-  if (text.length > maxLength) {
-    alert(`Message too long! Limit is ${maxLength} characters.`);
-    return;
-  }
-
-  text = filterProfanity(text);
-
-  await addDoc(msgCol, {
-    text,
+  // Common payload
+  const messagePayload = {
+    text: "",
     from: loggedInUser,
     to: activeTab,
     timestamp: Date.now(),
-  });
+  };
 
+  // Add reply info only if set
+  if (replyTarget) {
+    messagePayload.replyTo = replyTarget.id;
+  }
+
+  // Handle URLs as attachments
+  if (looksLikeUrl(text)) {
+    messagePayload.fileURL = text;
+    messagePayload.fileName = text.split("/").pop().split("?")[0];
+  } else {
+    const maxLength = 350;
+    if (text.length > maxLength) {
+      alert(`Message too long! Limit is ${maxLength} characters.`);
+      return;
+    }
+    messagePayload.text = filterProfanity(text);
+  }
+
+  // Send to Firestore
+  await addDoc(msgCol, messagePayload);
+
+  // Reset input + reply preview
   document.getElementById("noteInput").value = "";
+  clearReply();
 
-  // reset typing after sending
+  // Reset typing after sending
   await setDoc(doc(db, "presence", loggedInUser), { typing: false }, { merge: true });
 }
+
 
 
 const toggleBtn = document.getElementById("toggleSidebar");
@@ -1056,6 +1069,29 @@ function renderMessage(docSnap, data) {
   // --- Create container ---
   const div = document.createElement("div");
   div.className = "note-item";
+  div.dataset.id = docSnap.id; // 🔹 important for reply lookup
+
+  // --- Reply Preview (if message is a reply) ---
+  if (data.replyTo) {
+    const replyDiv = document.createElement("div");
+    replyDiv.textContent = "↩ Replying...";
+    Object.assign(replyDiv.style, {
+      fontSize: "11px",
+      color: "#888",
+      borderLeft: "2px solid #555",
+      paddingLeft: "6px",
+      marginBottom: "4px"
+    });
+
+    // Try to resolve inline
+    const repliedMessage = document.querySelector(`[data-id="${data.replyTo}"]`);
+    if (repliedMessage) {
+      const span = repliedMessage.querySelector("span");
+      if (span) replyDiv.textContent = `↩ ${span.textContent}`;
+    }
+
+    div.appendChild(replyDiv);
+  }
 
   // Avatar
   const avatarImg = document.createElement("img");
@@ -1116,12 +1152,23 @@ function renderMessage(docSnap, data) {
   }
 
   // --- Styling for roles ---
-if (ADMIN_USERS.includes(data.from)) {
-  div.classList.add("admin-message");
-}
+  if (ADMIN_USERS.includes(data.from)) {
+    div.classList.add("admin-message");
+  }
 
   if (data.from === loggedInUser) div.classList.add("own-message");
   else if (data.to === loggedInUser && data.to !== "all") div.classList.add("private-message");
+
+  // --- Reply button ---
+  const replyBtn = document.createElement("button");
+  replyBtn.textContent = "↩";
+  replyBtn.className = "reply-btn";
+  replyBtn.title = "Reply to this message";
+  replyBtn.onclick = (e) => {
+    e.stopPropagation();
+    setReplyTarget({ id: docSnap.id, text: data.text || data.fileName || "" });
+  };
+  div.appendChild(replyBtn);
 
   // --- Delete button ---
   let canDelete = isAdmin || data.from === loggedInUser;
@@ -1152,6 +1199,7 @@ if (ADMIN_USERS.includes(data.from)) {
 
   notesList.appendChild(div);
 }
+
 
 
 
@@ -1317,5 +1365,3 @@ function watchMessages(chatId) {
     }
   );
 }
-
-
