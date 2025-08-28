@@ -816,7 +816,7 @@ window.clearReply = function () {
 };
 
 
-// --- Unified sendMessage with typing + timestamp + reply support ---
+// ================== Send Message ==================
 async function sendMessage() {
   let text = document.getElementById("noteInput").value.trim();
   if (!text) return;
@@ -879,7 +879,6 @@ async function sendMessage() {
   // Reset typing after sending
   await setDoc(doc(db, "presence", loggedInUser), { typing: false }, { merge: true });
 }
-
 
 
 const toggleBtn = document.getElementById("toggleSidebar");
@@ -1070,6 +1069,18 @@ function renderMessage(docSnap, data) {
     return; // Don’t render after deletion
   }
 
+  // --- Filtering for DMs: only show if you’re sender or recipient ---
+  if (!isGroupKey(data.to) && data.to !== "all") {
+    if (!(data.from === loggedInUser || data.to === loggedInUser)) {
+      return; // not meant for me
+    }
+  }
+
+  // --- Filtering for groups: only show if in myGroups ---
+  if (isGroupKey(data.to) && !myGroups.has(data.to)) {
+    return;
+  }
+
   // --- Create container ---
   const div = document.createElement("div");
   div.className = "note-item";
@@ -1084,10 +1095,10 @@ function renderMessage(docSnap, data) {
       color: "#888",
       borderLeft: "2px solid #555",
       paddingLeft: "6px",
-      marginBottom: "4px"
+      marginBottom: "4px",
     });
 
-    // Try to resolve inline
+    // Try to resolve inline if available in DOM
     const repliedMessage = document.querySelector(`[data-id="${data.replyTo}"]`);
     if (repliedMessage) {
       const span = repliedMessage.querySelector("span");
@@ -1106,8 +1117,10 @@ function renderMessage(docSnap, data) {
   const content = document.createElement("span");
   if (isGroupKey(data.to)) {
     content.textContent = `#${groupNameFromKey(data.to)} • ${data.from}: ${data.text || data.fileName || ""}`;
-  } else if (data.to !== "all" && data.to !== loggedInUser && data.from === loggedInUser) {
-    content.textContent = `${data.from} → ${data.to}: ${data.text || data.fileName || ""}`;
+  } else if (data.to !== "all" && data.to === loggedInUser) {
+    content.textContent = `${data.from} → you: ${data.text || data.fileName || ""}`;
+  } else if (data.to !== "all" && data.from === loggedInUser) {
+    content.textContent = `you → ${data.to}: ${data.text || data.fileName || ""}`;
   } else {
     content.textContent = `${data.from}: ${data.text || data.fileName || ""}`;
   }
@@ -1369,4 +1382,5 @@ function watchMessages(chatId) {
     }
   );
 }
+
 
