@@ -3,7 +3,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebas
 import {
   getFirestore, collection, addDoc, onSnapshot,
   deleteDoc, doc, query, orderBy, setDoc,
-  updateDoc, arrayUnion, arrayRemove, serverTimestamp, getDoc
+  updateDoc, arrayUnion, arrayRemove, serverTimestamp, getDoc, getDocs
 } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
 /* ===== Firebase (Spark-plan friendly: no Storage) ===== */
@@ -1012,33 +1012,37 @@ function mergeMessage(msg) {
   }
 }
 
+// --- Keep track of muted users ---
+const mutedUsers = new Set();
 
+// --- Render a chat message ---
 function renderMessage(docSnap, data) {
   const now = Date.now();
   const ONE_HOUR = 60 * 60 * 1000;
+
+  // Skip muted users
+  if (mutedUsers.has(data.from)) return;
 
   // Convert Firestore Timestamp to milliseconds if necessary
   let msgTime = data.timestamp;
   if (msgTime && typeof msgTime.toMillis === "function") msgTime = msgTime.toMillis();
 
-  // --- Auto-delete old messages in background ---
+  // --- Auto-delete old messages ---
   if (msgTime && now - msgTime > ONE_HOUR) {
     (async () => {
       try {
         const targetCollection = isGroupKey(data.to)
           ? collection(db, "groups", groupNameFromKey(data.to), "messages")
           : collection(db, "messages");
-
         await deleteDoc(doc(targetCollection, docSnap.id));
         console.log("Auto-deleted old message:", docSnap.id);
       } catch (err) {
         console.error("Failed to auto-delete old message:", err);
       }
     })();
-    // DO NOT return — we still render the message
   }
 
-  // --- Render message normally ---
+  // --- Create message element ---
   const div = document.createElement("div");
   div.className = "note-item";
 
@@ -1050,15 +1054,15 @@ function renderMessage(docSnap, data) {
 
   if (isGroupKey(data.to)) {
     const gName = groupNameFromKey(data.to);
-    content.textContent = `#${gName} • ${data.from}: ${data.text || (data.fileName ? data.fileName : "")}`;
+    content.textContent = `#${gName} • ${data.from}: ${data.text || (data.fileName || "")}`;
   } else if (data.to !== "all" && data.to !== loggedInUser && data.from === loggedInUser) {
-    content.textContent = `${data.from} → ${data.to}: ${data.text || (data.fileName ? data.fileName : "")}`;
+    content.textContent = `${data.from} → ${data.to}: ${data.text || (data.fileName || "")}`;
   } else {
-    content.textContent = `${data.from}: ${data.text || (data.fileName ? data.fileName : "")}`;
+    content.textContent = `${data.from}: ${data.text || (data.fileName || "")}`;
   }
   div.appendChild(content);
 
-  // --- File attachments ---
+  // --- Attachments ---
   if (data.fileURL) {
     const sep = document.createTextNode(" ");
     div.appendChild(sep);
@@ -1068,7 +1072,7 @@ function renderMessage(docSnap, data) {
     fileLink.target = "_blank";
     fileLink.rel = "noopener noreferrer";
     fileLink.textContent = data.fileName || "File";
-    fileLink.style.color = "#ffcc00";
+    fileLink.style.color = "#ff8800";
     fileLink.style.textDecoration = "underline";
     div.appendChild(fileLink);
 
@@ -1103,9 +1107,8 @@ function renderMessage(docSnap, data) {
   else if (data.to === loggedInUser && data.to !== "all") div.classList.add("private-message");
 
   // --- Delete button ---
-  (function() {
+  (function () {
     let canDelete = isAdmin || data.from === loggedInUser;
-
     if (isGroupKey(data.to)) {
       const groupKey = data.to;
       const group = groupsMeta[groupKey];
@@ -1114,7 +1117,8 @@ function renderMessage(docSnap, data) {
 
     if (canDelete) {
       const delBtn = document.createElement("button");
-      delBtn.textContent = "Delete";
+      delBtn.textContent = "✖";
+      delBtn.className = "delete-btn";
       delBtn.title = "Delete message";
 
       delBtn.onclick = async (e) => {
@@ -1123,7 +1127,6 @@ function renderMessage(docSnap, data) {
           const targetCollection = isGroupKey(data.to)
             ? collection(db, "groups", groupNameFromKey(data.to), "messages")
             : collection(db, "messages");
-
           await deleteDoc(doc(targetCollection, docSnap.id));
         } catch (err) {
           console.error(err);
@@ -1136,6 +1139,99 @@ function renderMessage(docSnap, data) {
   })();
 
   notesList.appendChild(div);
+}
+
+
+window.addEventListener("DOMContentLoaded", () => {
+  const adminPanel = document.getElementById("adminPanel");
+  const adminCloseBtn = document.getElementById("adminCloseBtn");
+
+  // Only run if admin and adminPanel exists
+  if (!isAdmin || !adminPanel) return;
+
+  // Create Admin Panel button
+  const adminBtn = document.createElement("button");
+  adminBtn.textContent = "Admin Panel";
+  Object.assign(adminBtn.style, {
+    position: "fixed",
+    bottom: "80px", // above chat input
+    right: "20px",
+    zIndex: "1000",
+    background: "#ff8800",
+    color: "#121212",
+    border: "none",
+    padding: "10px 15px",
+    borderRadius: "10px",
+    cursor: "pointer",
+  });
+  document.body.appendChild(adminBtn);
+
+  // Show/hide panel
+  adminBtn.onclick = () => adminPanel.style.display = "block";
+  adminCloseBtn.onclick = () => adminPanel.style.display = "none";
+
+  // Setup admin actions (send/mute/unmute/delete)
+  setupAdminActions();
+});
+
+function setupAdminActions() {
+  const adminSendBtn = document.getElementById("adminSendBtn");
+  const adminMuteBtn = document.getElementById("adminMuteBtn");
+  const adminUnmuteBtn = document.getElementById("adminUnmuteBtn");
+  const adminDeleteAllBtn = document.getElementById("adminDeleteAllBtn");
+
+  if (adminSendBtn) {
+    adminSendBtn.onclick = async () => {
+      const user = document.getElementById("adminSendUser").value.trim();
+      const msg = document.getElementById("adminSendText").value.trim();
+      if (!user || !msg) return alert("Enter both username and message");
+      try {
+        await addDoc(collection(db, "messages"), { from: user, text: msg, timestamp: Date.now(), to: "all" });
+        document.getElementById("adminSendText").value = "";
+        alert("Message sent!");
+      } catch (e) { console.error(e); alert("Failed to send message"); }
+    };
+  }
+
+  if (adminMuteBtn) {
+    adminMuteBtn.onclick = async () => {
+      const user = document.getElementById("adminMuteUser").value.trim();
+      if (!user) return alert("Enter a username to mute");
+      mutedUsers.add(user);
+      document.querySelectorAll(".note-item").forEach(msgDiv => {
+        const text = msgDiv.querySelector("span")?.textContent;
+        if (text?.startsWith(user + ":")) msgDiv.style.display = "none";
+      });
+      try { await setDoc(doc(db, "muted", user), { muted: true }); alert(`${user} has been muted`); }
+      catch (e) { console.error(e); alert("Failed to mute user"); }
+    };
+  }
+
+  if (adminUnmuteBtn) {
+    adminUnmuteBtn.onclick = async () => {
+      const user = document.getElementById("adminMuteUser").value.trim();
+      if (!user) return alert("Enter a username to unmute");
+      mutedUsers.delete(user);
+      document.querySelectorAll(".note-item").forEach(msgDiv => {
+        const text = msgDiv.querySelector("span")?.textContent;
+        if (text?.startsWith(user + ":")) msgDiv.style.display = "";
+      });
+      try { await deleteDoc(doc(db, "muted", user)); alert(`${user} has been unmuted`); }
+      catch (e) { console.error(e); alert("Failed to unmute user"); }
+    };
+  }
+
+  if (adminDeleteAllBtn) {
+    adminDeleteAllBtn.onclick = async () => {
+      if (!confirm("Are you sure? This will delete ALL messages!")) return;
+      try {
+        const snapshot = await getDocs(collection(db, "messages"));
+        const deletes = snapshot.docs.map(docSnap => deleteDoc(doc(db, "messages", docSnap.id)));
+        await Promise.all(deletes);
+        alert("All messages deleted!");
+      } catch (e) { console.error(e); alert("Failed to delete all messages"); }
+    };
+  }
 }
 
 
