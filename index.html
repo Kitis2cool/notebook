@@ -5,80 +5,6 @@
   <title>Kitchatty</title>
   <link rel="stylesheet" href="style.css">
   <style>
-
-    /* === Admin Floating Button === */
-    #adminToggleBtn {
-      position: fixed;
-      bottom: 80px;
-      right: 20px;
-      background: #ff8800;
-      color: #121212;
-      border: none;
-      padding: 10px 15px;
-      border-radius: 10px;
-      cursor: pointer;
-      font-weight: bold;
-      z-index: 2100;
-    }
-
-    /* === Admin Panel === */
-    #adminPanel {
-      position: fixed;
-      top: 0;
-      right: -320px; /* hidden off screen */
-      width: 300px;
-      height: 100%;
-      background: #1e1e1e;
-      color: #fff;
-      padding: 15px;
-      box-shadow: -3px 0 10px rgba(0,0,0,0.6);
-      transition: right 0.3s ease;
-      border-radius: 8px 0 0 8px;
-      z-index: 2000;
-      display: flex;
-      flex-direction: column;
-    }
-
-    #adminPanel.open {
-      right: 0;
-    }
-
-    #adminPanel header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    #adminPanel input,
-    #adminPanel textarea {
-      width: 100%;
-      margin: 4px 0;
-      padding: 6px;
-      border-radius: 4px;
-      border: none;
-      font-size: 14px;
-    }
-
-    #adminPanel button {
-      margin-top: 6px;
-      padding: 6px 10px;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-    }
-
-    #adminCloseBtn {
-      background: none;
-      color: #fff;
-      border: none;
-      font-size: 16px;
-      cursor: pointer;
-    }
-
-    #adminDeleteAllBtn {
-      background: #c00;
-      color: #fff;
-    }
   </style>
 </head>
 <body>
@@ -155,49 +81,9 @@
     </div>
   </div>
 
-  <!-- Admin Toggle Button -->
-  <button id="adminToggleBtn">☰ Admin</button>
-
-  <!-- Admin Panel -->
-  <div id="adminPanel">
-    <header>
-      <h3 style="margin:0;">Admin Panel</h3>
-      <button id="adminCloseBtn">✖</button>
-    </header>
-    
-    <div style="margin-top:10px;">
-      <input id="adminSendUser" type="text" placeholder="Send as user">
-      <textarea id="adminSendText" placeholder="Message"></textarea>
-      <button id="adminSendBtn">Send</button>
-    </div>
-
-    <div style="margin-top:10px;">
-      <input id="adminMuteUser" type="text" placeholder="Username">
-      <button id="adminMuteBtn">Mute</button>
-      <button id="adminUnmuteBtn">Unmute</button>
-    </div>
-
-    <div style="margin-top:10px;">
-      <button id="adminDeleteAllBtn">Delete All Messages</button>
-    </div>
-  </div>
 
   <!-- Your main JS -->
   <script type="module" src="script.js"></script>
-  <script>
-    // Admin toggle logic
-    const adminToggleBtn = document.getElementById("adminToggleBtn");
-    const adminPanel = document.getElementById("adminPanel");
-    const adminCloseBtn = document.getElementById("adminCloseBtn");
 
-    adminToggleBtn.addEventListener("click", () => {
-      adminPanel.classList.toggle("open");
-    });
-
-    adminCloseBtn.addEventListener("click", () => {
-      adminPanel.classList.remove("open");
-    });
-    
-  </script>
 </body>
 </html>
