@@ -20,7 +20,7 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 /* ===== Admin & login ===== */
-const ADMIN_USERS = ["kitis", "kellen"];   // ✅ multiple admins
+const ADMIN_USERS = ["kitis", "kellen", "annfrank"];   // ✅ multiple admins
 let isAdmin = false;
 
 const loggedInUser = localStorage.getItem("loggedInUser");
@@ -1380,6 +1380,7 @@ function watchMessages(chatId) {
     }
   );
 }
+
 
 
 
